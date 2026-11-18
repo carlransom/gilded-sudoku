@@ -9,6 +9,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <style>
       button, [role="button"], select, summary, input:not([type="checkbox"], [type="radio"]) { min-height: 2rem; }
 
@@ -679,6 +682,63 @@
       .mile.unlocked .mstate { color: var(--gold-deep); }
       @media (prefers-color-scheme: dark) { .mile.unlocked .mstate { color: var(--gold-bright); } }
 
+      /* Panel: account */
+      .account {
+        background: var(--panel);
+        border: 1px solid var(--panel-line);
+        border-radius: 12px;
+        padding: 16px 18px;
+      }
+      .account .who { margin: 0 0 12px; font-size: 14.5px; line-height: 1.55; color: var(--ink-soft); }
+      .account .who b { color: var(--ink); }
+      .gbtn {
+        width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+        background: #ffffff; border: 1px solid #cfc9b4; color: #1f1e1a;
+        font: inherit; font-size: 14.5px; font-weight: 600;
+        border-radius: 999px; padding: 10px 0; cursor: pointer; min-height: 44px;
+        box-shadow: 0 1px 2px rgba(90, 74, 30, 0.14);
+      }
+      .gbtn svg { width: 18px; height: 18px; flex: none; }
+      .gbtn:disabled { opacity: 0.55; cursor: default; }
+      .acct-or {
+        display: flex; align-items: center; gap: 10px; margin: 14px 0 2px;
+        font-size: 10.5px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-soft);
+      }
+      .acct-or::before, .acct-or::after { content: ""; flex: 1; height: 1px; background: var(--panel-line); }
+      .acct-label {
+        display: block; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+        color: var(--ink-soft); margin: 10px 0 4px; font-weight: 600;
+      }
+      .account input {
+        width: 100%; font: inherit; font-size: 14.5px;
+        padding: 9px 12px; border: 1px solid var(--panel-line); border-radius: 9px;
+        background: #fffdf6; color: #17150f; min-height: 42px;
+      }
+      .account input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+      .acct-actions { display: flex; gap: 8px; margin-top: 14px; }
+      .acct-primary {
+        flex: 1; border: 0; border-radius: 999px;
+        background: linear-gradient(180deg, #2b2718, #14120c);
+        color: #f3d97b; font: inherit; font-size: 13px; font-weight: 600;
+        letter-spacing: 0.14em; text-transform: uppercase;
+        padding: 11px 0; cursor: pointer; min-height: 44px;
+      }
+      .acct-ghost {
+        flex: 1; border: 1px solid var(--gold-deep); background: transparent; color: var(--gold-deep);
+        font: inherit; font-size: 13px; font-weight: 600;
+        letter-spacing: 0.1em; text-transform: uppercase;
+        border-radius: 999px; padding: 11px 0; cursor: pointer; min-height: 44px;
+      }
+      @media (prefers-color-scheme: dark) {
+        .acct-ghost { color: var(--gold-bright); border-color: var(--gold-bright); }
+      }
+      .acct-ghost.wide { width: 100%; flex: none; }
+      .acct-note { font-size: 12.5px; color: var(--ink-soft); margin: 12px 0 0; line-height: 1.5; }
+      .acct-msg { font-size: 13px; line-height: 1.45; margin: 12px 0 0; color: var(--gold-deep); min-height: 1.2em; }
+      .acct-msg:empty { margin: 0; min-height: 0; }
+      .acct-msg.err { color: var(--error); }
+      @media (prefers-color-scheme: dark) { .acct-msg { color: var(--gold-bright); } }
+
       @media (prefers-reduced-motion: reduce) {
         * { transition: none !important; animation: none !important; }
       }
@@ -846,6 +906,35 @@
         <p class="kick">The game</p>
         <h2>A sudoku board with a porcelain finish.</h2>
         <p class="lede">The grid is glazed ceramic: bright white tiles with a soft sheen, ink-black givens, and gold doing the quiet work &mdash; box lines, highlights, the number you just placed. Underneath sits a full game loop: points for every cell, streaks that multiply them, a daily puzzle, weekly goals, gold milestone badges, and ranks that climb from Clay to Gold Master. The phone on the left is live: pick a difficulty and play it.</p>
+
+        <h3>Your account</h3>
+        <div class="account">
+          <div id="acctOut">
+            <p class="who">Sign in and your score, rank, badges, and streaks follow you to any device. No new account to make &mdash; your Google account is enough.</p>
+            <button type="button" class="gbtn" id="googleBtn">
+              <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3l5.7-5.7C34.3 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 8 3l5.7-5.7C34.3 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+              Continue with Google
+            </button>
+            <div class="acct-or"><span>or use email</span></div>
+            <label class="acct-label" for="acctEmail">Email</label>
+            <input type="email" id="acctEmail" autocomplete="email" placeholder="you@example.com" />
+            <label class="acct-label" for="acctPass">Password</label>
+            <input type="password" id="acctPass" autocomplete="current-password" placeholder="Password" />
+            <div class="acct-actions">
+              <button type="button" class="acct-primary" id="emailSignInBtn">Sign in</button>
+              <button type="button" class="acct-ghost" id="emailCreateBtn">Create account</button>
+            </div>
+            <p class="acct-note">Rather not? Just play &mdash; guests keep their progress on this device.</p>
+          </div>
+          <div id="acctIn" hidden>
+            <p class="who">Signed in as <b id="acctName"></b><br /><span id="acctEmailLabel"></span></p>
+            <p class="acct-note">Your progress syncs to your account as you play &mdash; pick it up on any device.</p>
+            <div class="acct-actions">
+              <button type="button" class="acct-ghost wide" id="signOutBtn">Sign out</button>
+            </div>
+          </div>
+          <p class="acct-msg" id="acctMsg" role="status" aria-live="polite"></p>
+        </div>
 
         <h3>The palette</h3>
         <div class="swatches">
@@ -1822,6 +1911,8 @@
 
         /* Keyboard play */
         document.addEventListener("keydown", function (e) {
+          var t = e.target;
+          if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) return;
           if (state.selected < 0) return;
           var r = Math.floor(state.selected / 9), c = state.selected % 9;
           if (e.key >= "1" && e.key <= "9") { enterNumber(parseInt(e.key, 10)); }
@@ -1934,6 +2025,306 @@
           if (!restored) newGame("easy");
           persist();
         })();
+      })();
+    </script>
+
+    <script>
+      /* ---------- Sign-in & cloud sync (Firebase) ----------
+         Guests play fully on-device: progress lives in the same
+         localStorage record the game already keeps (porcelain-sudoku-v1).
+         When a player signs in, their progress also lives in Firestore at
+         users/{uid}, and the two copies are merged: higher lifetime score
+         wins, badges are unioned, and the best (lowest) time per tier is
+         kept. Google sign-in always uses a popup — never a redirect,
+         which silently fails on phones. */
+      (function () {
+        "use strict";
+
+        var firebaseConfig = {
+          apiKey: "AIzaSyAGYZmxkJaKeZmdoYZxUm3kN7MVBHvuek0",
+          authDomain: "gilded-sudoku.firebaseapp.com",
+          projectId: "gilded-sudoku",
+          storageBucket: "gilded-sudoku.firebasestorage.app",
+          messagingSenderId: "1063996393945",
+          appId: "1:1063996393945:web:313ab02012dc843bfa71c8"
+        };
+        var LS_KEY = "porcelain-sudoku-v1";
+        var TIERS = ["easy", "normal", "advanced"];
+
+        var outEl = document.getElementById("acctOut");
+        var inEl = document.getElementById("acctIn");
+        var msgEl = document.getElementById("acctMsg");
+        var googleBtn = document.getElementById("googleBtn");
+        var emailEl = document.getElementById("acctEmail");
+        var passEl = document.getElementById("acctPass");
+        var signInBtn = document.getElementById("emailSignInBtn");
+        var createBtn = document.getElementById("emailCreateBtn");
+        var signOutBtn = document.getElementById("signOutBtn");
+        var nameEl = document.getElementById("acctName");
+        var emailLabelEl = document.getElementById("acctEmailLabel");
+        var saveNoteEl = document.querySelector(".save-note");
+        var SAVE_NOTE_GUEST = saveNoteEl ? saveNoteEl.textContent : "";
+
+        function say(text, isErr) {
+          msgEl.textContent = text || "";
+          msgEl.classList.toggle("err", !!isErr);
+        }
+
+        var auth = null, db = null;
+        try {
+          if (window.firebase && firebase.initializeApp && firebase.auth && firebase.firestore) {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+          }
+        } catch (e) { auth = null; db = null; }
+
+        if (!auth || !db) {
+          /* SDK unavailable (offline, blocked): the game still plays as guest. */
+          googleBtn.disabled = true;
+          signInBtn.disabled = true;
+          createBtn.disabled = true;
+          say("Sign-in isn't available right now — you can still play as a guest, and progress saves on this device.", true);
+          return;
+        }
+
+        /* ----- life record helpers (mirror the game's shape) ----- */
+        function todayKey(offsetDays) {
+          var d = new Date();
+          if (offsetDays) d.setDate(d.getDate() + offsetDays);
+          var m = d.getMonth() + 1, day = d.getDate();
+          return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day;
+        }
+        function weekKey() {
+          var d = new Date();
+          var monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
+          return "wk-" + monday.getFullYear() + "-" + (monday.getMonth() + 1) + "-" + monday.getDate();
+        }
+        function freshLife() {
+          return {
+            total: 0, wins: 0,
+            winsByTier: { easy: 0, normal: 0, advanced: 0 },
+            best: { easy: null, normal: null, advanced: null },
+            badges: {},
+            dailyDoneKey: null, dailyStreak: 0, dailyLastKey: null,
+            weekKey: weekKey(), weeklyAdvanced: 0
+          };
+        }
+        function sanitizeLife(saved) {
+          var d = freshLife();
+          if (!saved || typeof saved !== "object") return d;
+          if (typeof saved.total === "number") d.total = saved.total;
+          if (typeof saved.wins === "number") d.wins = saved.wins;
+          if (saved.winsByTier) TIERS.forEach(function (t) {
+            if (typeof saved.winsByTier[t] === "number") d.winsByTier[t] = saved.winsByTier[t];
+          });
+          if (saved.best) TIERS.forEach(function (t) {
+            if (typeof saved.best[t] === "number") d.best[t] = saved.best[t];
+          });
+          if (saved.badges && typeof saved.badges === "object") {
+            Object.keys(saved.badges).sort().forEach(function (k) {
+              if (saved.badges[k]) d.badges[k] = true;
+            });
+          }
+          if (typeof saved.dailyDoneKey === "string") d.dailyDoneKey = saved.dailyDoneKey;
+          if (typeof saved.dailyStreak === "number") d.dailyStreak = saved.dailyStreak;
+          if (typeof saved.dailyLastKey === "string") d.dailyLastKey = saved.dailyLastKey;
+          if (typeof saved.weekKey === "string") d.weekKey = saved.weekKey;
+          if (typeof saved.weeklyAdvanced === "number") d.weeklyAdvanced = saved.weeklyAdvanced;
+          return d;
+        }
+        function hasProgress(l) {
+          return !!l && (l.total > 0 || l.wins > 0 || Object.keys(l.badges || {}).length > 0);
+        }
+        function mergeLife(a, b) {
+          /* a = device, b = cloud. Higher lifetime score wins; badges are
+             unioned; best time per tier is the lower of the two. */
+          var m = freshLife();
+          m.total = Math.max(a.total, b.total);
+          m.wins = Math.max(a.wins, b.wins);
+          TIERS.forEach(function (t) {
+            m.winsByTier[t] = Math.max(a.winsByTier[t], b.winsByTier[t]);
+            var x = a.best[t], y = b.best[t];
+            m.best[t] = (x == null) ? y : (y == null) ? x : Math.min(x, y);
+          });
+          Object.keys(a.badges).forEach(function (k) { m.badges[k] = true; });
+          Object.keys(b.badges).forEach(function (k) { m.badges[k] = true; });
+          m.badges = sanitizeLife(m).badges;
+          /* Daily streak: take the side whose last daily play is more recent. */
+          var src = ((b.dailyLastKey || "") >= (a.dailyLastKey || "")) ? b : a;
+          m.dailyDoneKey = src.dailyDoneKey;
+          m.dailyStreak = src.dailyStreak;
+          m.dailyLastKey = src.dailyLastKey;
+          /* Weekly goal: same week — keep the larger count; different
+             weeks — keep whichever belongs to the current week. */
+          if (a.weekKey === b.weekKey) {
+            m.weekKey = a.weekKey;
+            m.weeklyAdvanced = Math.max(a.weeklyAdvanced, b.weeklyAdvanced);
+          } else if (b.weekKey === weekKey()) {
+            m.weekKey = b.weekKey; m.weeklyAdvanced = b.weeklyAdvanced;
+          } else if (a.weekKey === weekKey()) {
+            m.weekKey = a.weekKey; m.weeklyAdvanced = a.weeklyAdvanced;
+          } else {
+            m.weekKey = weekKey(); m.weeklyAdvanced = 0;
+          }
+          return m;
+        }
+
+        function readLocalRecord() {
+          try {
+            var raw = localStorage.getItem(LS_KEY);
+            if (!raw) return null;
+            var data = JSON.parse(raw);
+            return (data && typeof data === "object") ? data : null;
+          } catch (e) { return null; }
+        }
+        function localLife() {
+          var rec = readLocalRecord();
+          return rec ? sanitizeLife(rec.life) : freshLife();
+        }
+        function writeLocalLife(lifeObj) {
+          try {
+            var rec = readLocalRecord() || { version: 1 };
+            rec.life = lifeObj;
+            rec.savedAt = Date.now();
+            localStorage.setItem(LS_KEY, JSON.stringify(rec));
+          } catch (e) { /* storage blocked — cloud copy still holds it */ }
+        }
+
+        /* ----- cloud sync ----- */
+        var currentUser = null;
+        var syncReady = false;      /* true once the sign-in merge has run */
+        var lastPushedJSON = null;  /* last life JSON known to be in the cloud */
+
+        function cloudSave(lifeObj) {
+          if (!currentUser || !db) return;
+          var data = {};
+          Object.keys(lifeObj).forEach(function (k) { data[k] = lifeObj[k]; });
+          data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+          db.collection("users").doc(currentUser.uid).set(data)
+            .catch(function () { /* offline — the next change retries */ });
+        }
+
+        function syncOnSignIn() {
+          var local = localLife();
+          db.collection("users").doc(currentUser.uid).get()
+            .then(function (snap) {
+              var cloud = snap.exists ? sanitizeLife(snap.data()) : null;
+              var merged;
+              if (cloud && hasProgress(cloud) && hasProgress(local)) {
+                merged = mergeLife(local, cloud);
+              } else if (cloud && hasProgress(cloud)) {
+                merged = cloud;
+              } else {
+                /* Cloud empty (or brand-new): the device copy is the truth,
+                   and gets uploaded so it follows the player from now on. */
+                merged = local;
+              }
+              lastPushedJSON = JSON.stringify(merged);
+              cloudSave(merged);
+              syncReady = true;
+              if (JSON.stringify(local) !== JSON.stringify(merged)) {
+                /* The cloud/merged record is ahead of this device: store it
+                   locally and reload so the game picks it up everywhere —
+                   the puzzle in progress resumes from the same save. */
+                writeLocalLife(merged);
+                location.reload();
+              }
+            })
+            .catch(function () {
+              /* Couldn't read the cloud copy — keep playing on the device
+                 record; pushes resume with the next progress change. */
+              lastPushedJSON = JSON.stringify(local);
+              syncReady = true;
+            });
+        }
+
+        /* Push progress to the cloud whenever the on-device record changes. */
+        setInterval(function () {
+          if (!currentUser || !syncReady) return;
+          var lifeNow = localLife();
+          var j = JSON.stringify(lifeNow);
+          if (j !== lastPushedJSON) {
+            lastPushedJSON = j;
+            cloudSave(lifeNow);
+          }
+        }, 2500);
+
+        /* ----- auth UI ----- */
+        function renderAuth() {
+          if (currentUser) {
+            outEl.hidden = true;
+            inEl.hidden = false;
+            nameEl.textContent = currentUser.displayName || currentUser.email || "Player";
+            emailLabelEl.textContent = currentUser.displayName ? (currentUser.email || "") : "";
+            if (saveNoteEl) saveNoteEl.textContent = "✦ Synced to your account as you play";
+          } else {
+            outEl.hidden = false;
+            inEl.hidden = true;
+            if (saveNoteEl) saveNoteEl.textContent = SAVE_NOTE_GUEST;
+          }
+        }
+
+        auth.onAuthStateChanged(function (u) {
+          currentUser = u || null;
+          syncReady = false;
+          lastPushedJSON = null;
+          renderAuth();
+          if (currentUser) syncOnSignIn();
+        });
+
+        function friendlyError(err) {
+          var code = err && err.code ? err.code : "";
+          if (code === "auth/popup-blocked") return "Popups are blocked for this site — allow them, then try again.";
+          if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return "The sign-in window closed before finishing — try again.";
+          if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") return "That email and password don't match an account. Check them, or create an account below.";
+          if (code === "auth/email-already-in-use") return "That email already has an account — use Sign in instead.";
+          if (code === "auth/weak-password") return "That password is too short — use at least 6 characters.";
+          if (code === "auth/invalid-email") return "That email address doesn't look right.";
+          if (code === "auth/too-many-requests") return "Too many tries in a row — wait a bit, then try again.";
+          if (code === "auth/network-request-failed") return "No connection right now — check your network and try again.";
+          return (err && err.message) ? err.message : "Sign-in failed — try again.";
+        }
+
+        googleBtn.addEventListener("click", function () {
+          say("");
+          var provider = new firebase.auth.GoogleAuthProvider();
+          /* Popup on every device — never signInWithRedirect. */
+          auth.signInWithPopup(provider).catch(function (err) {
+            say(friendlyError(err), true);
+          });
+        });
+
+        function emailValues() {
+          return { email: emailEl.value.trim(), pass: passEl.value };
+        }
+        signInBtn.addEventListener("click", function () {
+          var v = emailValues();
+          if (!v.email || !v.pass) { say("Enter your email and password first.", true); return; }
+          say("");
+          auth.signInWithEmailAndPassword(v.email, v.pass).catch(function (err) {
+            say(friendlyError(err), true);
+          });
+        });
+        createBtn.addEventListener("click", function () {
+          var v = emailValues();
+          if (!v.email || !v.pass) { say("Enter an email and a password to create your account.", true); return; }
+          say("");
+          auth.createUserWithEmailAndPassword(v.email, v.pass).catch(function (err) {
+            say(friendlyError(err), true);
+          });
+        });
+        passEl.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") signInBtn.click();
+        });
+
+        signOutBtn.addEventListener("click", function () {
+          auth.signOut().then(function () {
+            say("Signed out. You keep playing as a guest — progress stays on this device.");
+          }).catch(function (err) {
+            say(friendlyError(err), true);
+          });
+        });
       })();
     </script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js');});}</script>

@@ -1474,8 +1474,12 @@
            On a win, one spirit-animal demo clip plays once (3 seconds:
            a strike, then a held defensive stance). Clips live alongside
            the app under videos/. The clip's own sound follows the game's
-           Sound setting, and if a clip can't load the frame hides itself
-           so the win sheet still looks clean. */
+           Sound setting. Fail-free: the frame never hides itself on a
+           load failure — if the chosen clip fails to load, the next
+           clip is tried automatically, cycling through the whole list
+           (with a watchdog for a load that hangs without ever firing
+           an error) until one plays, so the win screen always shows
+           a victory demo. */
         var WIN_CLIPS = [
           { src: "videos/wolf-male-kick.mp4",        label: "Wolf Spirit · Kick" },
           { src: "videos/wolf-female-kick.mp4",      label: "Wolf Spirit · Kick" },
@@ -1493,45 +1497,144 @@
         var winVideoWrap = document.getElementById("winVideoWrap");
         var winVideo = document.getElementById("winVideo");
         var winVideoCap = document.getElementById("winVideoCap");
-        function hideWinVideo() {
-          winVideoWrap.hidden = true;
-          try { winVideo.pause(); } catch (e) {}
+        /* Fallback state: a win session stays active until the sheet
+           closes; attempts walk a shuffled order of every clip and
+           start a fresh pass if a whole pass fails, so trying never
+           stops while the win screen is up. */
+        var winVideoActive = false;
+        var winVideoOrder = [];
+        var winVideoPos = 0;
+        var winVideoAttempt = 0;
+        var winVideoClipIdx = -1;
+        var winVideoWatchdog = null;
+        var winVideoRetryTimer = null;
+        var winVideoReducedMotion = false;
+        function clearWinVideoTimers() {
+          if (winVideoWatchdog) { clearTimeout(winVideoWatchdog); winVideoWatchdog = null; }
+          if (winVideoRetryTimer) { clearTimeout(winVideoRetryTimer); winVideoRetryTimer = null; }
         }
-        winVideo.addEventListener("error", hideWinVideo);
+        function buildWinVideoOrder(firstIdx) {
+          var rest = [];
+          for (var i = 0; i < WIN_CLIPS.length; i++) if (i !== firstIdx) rest.push(i);
+          for (var j = rest.length - 1; j > 0; j--) {
+            var k = Math.floor(Math.random() * (j + 1));
+            var tmp = rest[j]; rest[j] = rest[k]; rest[k] = tmp;
+          }
+          return [firstIdx].concat(rest);
+        }
+        function pickWinVideoFirst() {
+          var idx = Math.floor(Math.random() * WIN_CLIPS.length);
+          if (WIN_CLIPS.length > 1) {
+            while (idx === lastClipIdx) idx = Math.floor(Math.random() * WIN_CLIPS.length);
+          }
+          return idx;
+        }
+        /* Advance past a failed clip exactly once per attempt: an
+           error event and a rejected play() for the same clip must
+           not skip two clips. */
+        function failWinVideoAttempt(attempt) {
+          if (!winVideoActive || attempt !== winVideoAttempt) return;
+          winVideoAttempt++;
+          if (winVideoWatchdog) { clearTimeout(winVideoWatchdog); winVideoWatchdog = null; }
+          winVideoPos++;
+          tryWinVideoClip();
+        }
+        winVideo.addEventListener("error", function () {
+          failWinVideoAttempt(winVideoAttempt);
+        });
+        winVideo.addEventListener("canplay", function () {
+          if (winVideoWatchdog) { clearTimeout(winVideoWatchdog); winVideoWatchdog = null; }
+          if (winVideoActive && winVideoClipIdx >= 0) lastClipIdx = winVideoClipIdx;
+        });
+        winVideo.addEventListener("playing", function () {
+          if (winVideoWatchdog) { clearTimeout(winVideoWatchdog); winVideoWatchdog = null; }
+          if (winVideoActive && winVideoClipIdx >= 0) lastClipIdx = winVideoClipIdx;
+        });
+        function attemptWinVideoPlay(attempt) {
+          if (winVideoReducedMotion) return;
+          var playPromise = winVideo.play();
+          if (playPromise && playPromise.catch) {
+            playPromise.catch(function (err) {
+              if (!winVideoActive || attempt !== winVideoAttempt) return;
+              if (err && err.name === "NotAllowedError") {
+                /* The browser blocked sound-on autoplay: still show
+                   the demo, just silently, rather than a frozen frame.
+                   A policy block is not a load failure, so it never
+                   cycles clips. */
+                if (!winVideo.muted) {
+                  winVideo.muted = true;
+                  var retry = winVideo.play();
+                  if (retry && retry.catch) {
+                    retry.catch(function (retryErr) {
+                      if (!winVideoActive || attempt !== winVideoAttempt) return;
+                      if (retryErr && retryErr.name === "NotAllowedError") return;
+                      failWinVideoAttempt(attempt);
+                    });
+                  }
+                }
+                return;
+              }
+              /* The clip itself can't play (bad source, unsupported,
+                 network failure): fall through to the next clip. */
+              failWinVideoAttempt(attempt);
+            });
+          }
+        }
+        function tryWinVideoClip() {
+          if (!winVideoActive) return;
+          if (winVideoPos >= winVideoOrder.length) {
+            /* Every clip failed on this pass — start a fresh pass
+               rather than giving up; the demo must always show. */
+            winVideoOrder = buildWinVideoOrder(pickWinVideoFirst());
+            winVideoPos = 0;
+            var retryAttempt = winVideoAttempt;
+            winVideoRetryTimer = setTimeout(function () {
+              if (winVideoActive && retryAttempt === winVideoAttempt) tryWinVideoClip();
+            }, 600);
+            return;
+          }
+          winVideoAttempt++;
+          var attempt = winVideoAttempt;
+          winVideoClipIdx = winVideoOrder[winVideoPos];
+          var clip = WIN_CLIPS[winVideoClipIdx];
+          winVideoCap.textContent = clip.label;
+          winVideoWrap.hidden = false;
+          winVideo.muted = !soundOn;
+          winVideo.src = clip.src;
+          winVideo.load();
+          /* Watchdog: a load that hangs without an error event still
+             counts as a failure once it has had long enough. */
+          if (winVideoWatchdog) clearTimeout(winVideoWatchdog);
+          winVideoWatchdog = setTimeout(function () {
+            winVideoWatchdog = null;
+            if (winVideo.readyState < 2) failWinVideoAttempt(attempt);
+          }, 6000);
+          /* No loop: when the clip ends it rests on the final
+             defensive-stance frame. Reduced-motion players see the
+             opening frame instead of autoplay. */
+          attemptWinVideoPlay(attempt);
+        }
         function stopWinVideo() {
+          winVideoActive = false;
+          winVideoAttempt++;
+          clearWinVideoTimers();
+          winVideoOrder = [];
+          winVideoPos = 0;
+          winVideoClipIdx = -1;
           try { winVideo.pause(); } catch (e) {}
           winVideo.removeAttribute("src");
           try { winVideo.load(); } catch (e) {}
           winVideoWrap.hidden = true;
         }
         function startWinVideo() {
-          var idx = Math.floor(Math.random() * WIN_CLIPS.length);
-          if (WIN_CLIPS.length > 1) {
-            while (idx === lastClipIdx) idx = Math.floor(Math.random() * WIN_CLIPS.length);
-          }
-          lastClipIdx = idx;
-          var clip = WIN_CLIPS[idx];
-          winVideoCap.textContent = clip.label;
+          winVideoActive = true;
+          winVideoAttempt++;
+          clearWinVideoTimers();
+          winVideoReducedMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+          winVideoOrder = buildWinVideoOrder(pickWinVideoFirst());
+          winVideoPos = 0;
           winVideoWrap.hidden = false;
-          winVideo.muted = !soundOn;
-          winVideo.src = clip.src;
-          winVideo.load();
-          /* No loop: when the clip ends it rests on the final
-             defensive-stance frame. Reduced-motion players see the
-             opening frame instead of autoplay. */
-          if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-          var attempt = winVideo.play();
-          if (attempt && attempt.catch) {
-            attempt.catch(function () {
-              /* The browser blocked sound-on autoplay: still show the
-                 demo, just silently, rather than a frozen frame. */
-              if (!winVideo.muted) {
-                winVideo.muted = true;
-                var retry = winVideo.play();
-                if (retry && retry.catch) retry.catch(function () {});
-              }
-            });
-          }
+          tryWinVideoClip();
         }
 
         /* Build badge chips (phone) + milestone rows (panel) once */

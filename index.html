@@ -565,6 +565,33 @@
       .sheet .new-badges { display: none; margin: 0 0 14px; font-size: 12.5px; color: var(--gold-deep); font-weight: 600; letter-spacing: 0.04em; line-height: 1.5; }
       .sheet .new-badges.show { display: block; }
 
+      /* Win celebration video — spirit-animal demo, gold/black/white frame */
+      .win-video {
+        margin: 2px 0 14px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #0c0b09;
+        border: 1px solid var(--gold-deep);
+        box-shadow: 0 10px 22px -10px rgba(90, 74, 30, 0.55), inset 0 0 0 1px rgba(243, 217, 123, 0.28);
+      }
+      .win-video[hidden] { display: none; }
+      .win-video video {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        background: #0c0b09;
+      }
+      .win-video-cap {
+        padding: 7px 10px 8px;
+        font-size: 10.5px;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: #f3d97b;
+        background: linear-gradient(180deg, #2b2718, #14120c);
+        text-align: center;
+      }
+
       /* ---------- Concept panel ---------- */
       .panel { max-width: 560px; }
       @media (max-width: 860px) { .panel { width: 100%; } }
@@ -882,6 +909,10 @@
             <div class="sheet">
               <h2 id="winTitle">Puzzle Complete</h2>
               <p>A clean solve. The porcelain holds.</p>
+              <div class="win-video" id="winVideoWrap" hidden>
+                <video id="winVideo" playsinline preload="auto" aria-label="Victory demonstration by a spirit animal"></video>
+                <div class="win-video-cap" id="winVideoCap"></div>
+              </div>
               <div class="winstats">
                 <div><b id="winTime">00:00</b><span>Time</span></div>
                 <div><b id="winDiff">Easy</b><span>Difficulty</span></div>
@@ -1053,7 +1084,7 @@
           <p style="margin-top:10px;">Tap <b>Remove Ads</b> on the phone to preview exactly what a paying player sees.</p>
         </div>
 
-        <p class="tryline"><b>Try it:</b> place numbers and watch the score climb &mdash; chain correct cells to raise the streak multiplier and hear the chime climb a note with each one in a row, and notice what a hint costs you. Finish a puzzle to see the full score breakdown, earn your first badge, and start the climb from Clay. Everything saves on this device as you play &mdash; close the page mid-puzzle and you&rsquo;ll come back to the same board, score, streak, and timer.</p>
+        <p class="tryline"><b>Try it:</b> place numbers and watch the score climb &mdash; chain correct cells to raise the streak multiplier and hear the chime climb a note with each one in a row, and notice what a hint costs you. Finish a puzzle and a spirit animal &mdash; wolf, panther, or tiger &mdash; marks the win with a three-second demonstration, strike flowing into a defensive stance, before the full score breakdown, your first badge, and the start of the climb from Clay. Everything saves on this device as you play &mdash; close the page mid-puzzle and you&rsquo;ll come back to the same board, score, streak, and timer.</p>
 
         <p class="panel-foot"><a href="/privacy.html">Privacy</a></p>
       </aside>
@@ -1439,6 +1470,70 @@
           for (var wi = 0; wi < notes.length; wi++) tone(notes[wi], wi * 0.09, 0.5, 0.38);
         }
 
+        /* ---------- Win celebration video ----------
+           On a win, one spirit-animal demo clip plays once (3 seconds:
+           a strike, then a held defensive stance). Clips live alongside
+           the app under videos/. The clip's own sound follows the game's
+           Sound setting, and if a clip can't load the frame hides itself
+           so the win sheet still looks clean. */
+        var WIN_CLIPS = [
+          { src: "videos/wolf-male-kick.mp4",        label: "Wolf Spirit · Kick" },
+          { src: "videos/wolf-female-kick.mp4",      label: "Wolf Spirit · Kick" },
+          { src: "videos/panther-male-punch.mp4",    label: "Panther Spirit · Punch" },
+          { src: "videos/panther-female-punch.mp4",  label: "Panther Spirit · Punch" },
+          { src: "videos/tiger-male-kick.mp4",       label: "Tiger Spirit · Kick" },
+          { src: "videos/tiger-female-kick.mp4",     label: "Tiger Spirit · Kick" },
+          { src: "videos/wolf-male-punch.mp4",       label: "Wolf Spirit · Punch" },
+          { src: "videos/wolf-female-spin.mp4",      label: "Wolf Spirit · Spinning Strike" },
+          { src: "videos/panther-male-roundhouse.mp4", label: "Panther Spirit · Roundhouse" },
+          { src: "videos/panther-female-jump.mp4",   label: "Panther Spirit · Leaping Strike" },
+          { src: "videos/tiger-male-knee.mp4",       label: "Tiger Spirit · Knee Strike" }
+        ];
+        var lastClipIdx = -1;
+        var winVideoWrap = document.getElementById("winVideoWrap");
+        var winVideo = document.getElementById("winVideo");
+        var winVideoCap = document.getElementById("winVideoCap");
+        function hideWinVideo() {
+          winVideoWrap.hidden = true;
+          try { winVideo.pause(); } catch (e) {}
+        }
+        winVideo.addEventListener("error", hideWinVideo);
+        function stopWinVideo() {
+          try { winVideo.pause(); } catch (e) {}
+          winVideo.removeAttribute("src");
+          try { winVideo.load(); } catch (e) {}
+          winVideoWrap.hidden = true;
+        }
+        function startWinVideo() {
+          var idx = Math.floor(Math.random() * WIN_CLIPS.length);
+          if (WIN_CLIPS.length > 1) {
+            while (idx === lastClipIdx) idx = Math.floor(Math.random() * WIN_CLIPS.length);
+          }
+          lastClipIdx = idx;
+          var clip = WIN_CLIPS[idx];
+          winVideoCap.textContent = clip.label;
+          winVideoWrap.hidden = false;
+          winVideo.muted = !soundOn;
+          winVideo.src = clip.src;
+          winVideo.load();
+          /* No loop: when the clip ends it rests on the final
+             defensive-stance frame. Reduced-motion players see the
+             opening frame instead of autoplay. */
+          if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+          var attempt = winVideo.play();
+          if (attempt && attempt.catch) {
+            attempt.catch(function () {
+              /* The browser blocked sound-on autoplay: still show the
+                 demo, just silently, rather than a frozen frame. */
+              if (!winVideo.muted) {
+                winVideo.muted = true;
+                var retry = winVideo.play();
+                if (retry && retry.catch) retry.catch(function () {});
+              }
+            });
+          }
+        }
+
         /* Build badge chips (phone) + milestone rows (panel) once */
         var badgeEls = {};
         (function buildBadges() {
@@ -1601,6 +1696,7 @@
           frameEl.classList.remove("is-paused");
           boardEl.classList.remove("paused");
           document.getElementById("winVeil").classList.remove("open");
+          stopWinVideo();
           clockEl.textContent = "00:00";
           render();
           startTimer();
@@ -1819,6 +1915,7 @@
           nb.classList.toggle("show", notes.length > 0);
           setTimeout(function () {
             document.getElementById("winVeil").classList.add("open");
+            startWinVideo();
           }, 350);
         }
 
@@ -1914,6 +2011,7 @@
         document.getElementById("winNewBtn").addEventListener("click", function () { newGame(state.diff); });
         document.getElementById("winCloseBtn").addEventListener("click", function () {
           document.getElementById("winVeil").classList.remove("open");
+          stopWinVideo();
         });
 
         /* Remove ads (mock purchase) */

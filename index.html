@@ -392,19 +392,31 @@
       }
       .adfree-note.show { display: block; }
 
-      /* Win overlay + purchase sheet */
+      /* Win overlay + purchase sheet.
+         position: fixed, NOT absolute: .screen grows to the full
+         height of the app (board + progress + ads ≈ 2 phone
+         viewports), so an absolute inset:0 veil pinned the sheet to
+         the very bottom of that tall container — on a win the player
+         saw only the dimmed board while the sheet (and the fighter
+         video inside it) sat off-screen below the ad slot. Fixed
+         anchors the veil to the viewport the player is looking at. */
       .veil {
-        position: absolute; inset: 0;
+        position: fixed; inset: 0;
         background: rgba(23, 20, 12, 0.55);
         display: none;
         align-items: flex-end;
         justify-content: center;
-        z-index: 5;
+        z-index: 60;
+        overflow-y: auto;
       }
       .veil.open { display: flex; }
       .sheet {
         background: linear-gradient(180deg, #fffef9, #f6efdb);
         width: 100%;
+        max-width: 410px;
+        max-height: 100vh;
+        max-height: 100dvh;
+        overflow-y: auto;
         border-radius: 22px 22px 0 0;
         padding: 22px 22px 26px;
         text-align: center;

@@ -1950,6 +1950,7 @@
           state.won = true;
           stopTimer();
           playWin();
+          startWinVideo();
 
           /* --- Bonuses --- */
           var rules = SCORING[state.diff];
@@ -2018,7 +2019,6 @@
           nb.classList.toggle("show", notes.length > 0);
           setTimeout(function () {
             document.getElementById("winVeil").classList.add("open");
-            startWinVideo();
           }, 350);
         }
 

@@ -3232,7 +3232,7 @@
     </script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js');});}</script>
 <script>
-window.addEventListener("load", function(){ setTimeout(function(){
+(function(){ function start(){ setTimeout(function(){
 /* Fighter-pick end-to-end QA driver — auto-runs on load in qa-fighter.html (guest).
    Picks each fighter, wins a game, and verifies THAT fighter's clip plays.
    Writes window.QA_FIGHTER_REPORT + <pre id="qa-fighter-report">. Resumes after
@@ -3246,6 +3246,12 @@ window.addEventListener("load", function(){ setTimeout(function(){
   var saved = null;
   try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { saved = null; }
   var QA = saved || { checks: [], errors: [], wins: [], phase: 'start' };
+  var badge = document.createElement('div');
+  badge.id = 'qa-status';
+  badge.style.cssText = 'position:fixed;top:8px;left:8px;z-index:99999;background:#111;color:#ffe27a;padding:8px 12px;font:14px sans-serif;border:2px solid #b08d2e;border-radius:8px;max-width:92vw;';
+  badge.textContent = 'Fighter QA running — starting…';
+  document.body.appendChild(badge);
+  function setStatus(t) { badge.textContent = t; }
   function persist() { try { localStorage.setItem(KEY, JSON.stringify(QA)); } catch (e) {} }
   function check(name, ok, detail) {
     QA.checks.push({ name: name, ok: !!ok, detail: detail == null ? '' : String(detail) });
@@ -3281,6 +3287,7 @@ window.addEventListener("load", function(){ setTimeout(function(){
     await sleep(200);
   }
   async function solveClean() {
+    if (state.paused) { try { $('pauseBtn').click(); } catch (e) {} await sleep(300); }
     for (var r = 0; r < 9; r++) for (var c = 0; c < 9; c++) {
       if (state.given[r][c] || state.values[r][c] !== 0) continue;
       try { select(r * 9 + c); enterNumber(state.solution[r][c]); }
@@ -3324,13 +3331,14 @@ window.addEventListener("load", function(){ setTimeout(function(){
     pre.id = 'qa-fighter-report';
     pre.textContent = JSON.stringify(summary, null, 2);
     document.body.appendChild(pre);
+    setStatus('Fighter QA DONE — ' + passed + ' passed, ' + failed.length + ' failed');
     console.log('QA-FIGHTER-DONE ' + JSON.stringify(summary));
     window.__qfRunning = false;
     return summary;
   }
   (async function main() {
     try {
-      await waitFor(function () { return document.readyState === 'complete' && typeof state !== 'undefined' && typeof newGame === 'function'; }, 10000, 'game ready');
+      await waitFor(function () { return (document.readyState === 'complete' || document.readyState === 'interactive') && typeof state !== 'undefined' && typeof newGame === 'function'; }, 10000, 'game ready');
       await sleep(800);
       if (QA.phase === 'after-dragon-reload') {
         $('settingsBtn').click();
@@ -3391,6 +3399,7 @@ window.addEventListener("load", function(){ setTimeout(function(){
     } catch (e) {
       QA.errors.push('driver: ' + (e && e.stack || e));
       persist();
+      setStatus('Fighter QA ERROR: ' + (e && e.message || e));
       console.log('QA-FIGHTER-ERROR ' + (e && e.stack || e));
       window.__qfRunning = false;
       throw e;
@@ -3399,7 +3408,9 @@ window.addEventListener("load", function(){ setTimeout(function(){
   return 'fighter QA started — watch for QA-FIGHTER-DONE';
 })();
 
-}, 1500); });
+}, 800); }
+if (document.readyState === "complete" || document.readyState === "interactive") start();
+else document.addEventListener("DOMContentLoaded", start); })();
 </script>
 </body>
 </html>

@@ -3597,6 +3597,18 @@
     } else {
       await solveClean(sol);
     }
+    await (async function () {
+      var cc = cells(); var e1 = 0;
+      for (var k = 0; k < 81; k++) if (cc[k].textContent.trim() === '') e1++;
+      if (e1 > 0) {
+        trace('solveClean left ' + e1 + ' empty — retrying after unpause');
+        await ensureUnpaused();
+        await solveClean(sol);
+        var cc2 = cells(); var e2 = 0;
+        for (var k2 = 0; k2 < 81; k2++) if (cc2[k2].textContent.trim() === '') e2++;
+        check('board filled after retry (game ' + n + ')', e2 === 0, e2 + ' cells still empty');
+      }
+    })();
     await observeWin(n);
     await closeWinVeil();
     await sleep(300);
@@ -3749,10 +3761,13 @@
         check('game resumes after reload (same score)', scoreVal() === snap.score, scoreVal() + ' vs ' + snap.score);
         QA.phase = 'run';
         persistQA();
+        await ensureUnpaused();
+        trace('resuming fill after reload');
         var givens = readGivens();
         var sol = solve(givens);
         if (!sol) throw new Error('no solution after reload');
         await solveClean(sol);
+        (function () { var cc = cells(); var e = 0; for (var k = 0; k < 81; k++) if (cc[k].textContent.trim() === '') e++; check('resume: board filled after reload', e === 0, e + ' cells still empty'); })();
         await observeWin(5);
         await closeWinVeil();
         await sleep(300);

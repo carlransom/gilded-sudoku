@@ -1361,8 +1361,7 @@
           solve();
           return count;
         }
-        function generate(givensTarget, seed) {
-          activeRng = (seed != null) ? mulberry32(seed) : null;
+        function generateOnce(givensTarget) {
           var solution = [];
           for (var r = 0; r < 9; r++) solution.push([0,0,0,0,0,0,0,0,0]);
           fillGrid(solution);
@@ -1414,8 +1413,42 @@
             }
             if (removedSingle === 0) break;
           }
-          activeRng = null;
-          return { puzzle: puzzle, solution: solution };
+          return { puzzle: puzzle, solution: solution, givens: givens };
+        }
+        function generate(givensTarget, seed) {
+          /* Seeded puzzles (the daily) must stay exactly as before: a
+             single attempt from the given seed, no retries. */
+          if (seed != null) {
+            activeRng = mulberry32(seed);
+            var seeded = generateOnce(givensTarget);
+            activeRng = null;
+            return { puzzle: seeded.puzzle, solution: seeded.solution };
+          }
+          /* Unseeded: if an attempt stalls above the target (no further
+             removal keeps a unique solution for that solution grid),
+             discard it and try a fresh solution grid, up to 6 attempts,
+             keeping the puzzle with the fewest givens. Easy and Normal
+             already hit their targets on the first attempt, so the
+             retry simply never triggers for them. Every attempt keeps
+             the unique-solution guarantee inside generateOnce. */
+          var best = null;
+          var bestGivens = Infinity;
+          for (var attempt = 0; attempt < 6; attempt++) {
+            if (attempt === 0) {
+              activeRng = null;
+            } else {
+              var attemptSeed = (Math.floor(Math.random() * 4294967296) ^ Math.imul(attempt, 2654435761) ^ Date.now()) >>> 0;
+              activeRng = mulberry32(attemptSeed);
+            }
+            var result = generateOnce(givensTarget);
+            activeRng = null;
+            if (result.givens < bestGivens) {
+              best = result;
+              bestGivens = result.givens;
+            }
+            if (bestGivens <= givensTarget) break;
+          }
+          return { puzzle: best.puzzle, solution: best.solution };
         }
 
         /* ---------- Scoring, ranks, milestones ---------- */

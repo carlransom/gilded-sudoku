@@ -1450,6 +1450,29 @@
             }
             if (removedThisPass === 0) break;
           }
+          /* Single-cell cleanup: mirror pairs stall above the target when
+             uniqueness blocks removing both mirrors at once, but removing
+             one cell at a time can still get there. Keep sweeping (fresh
+             shuffle each pass) until the target is reached or a full pass
+             removes nothing. */
+          while (givens > givensTarget) {
+            var singles = shuffled(Array.from({ length: 81 }, function (_, i) { return i; }));
+            var removedSingle = 0;
+            for (var j = 0; j < singles.length && givens > givensTarget; j++) {
+              var sidx = singles[j], sr = Math.floor(sidx / 9), sc = sidx % 9;
+              if (puzzle[sr][sc] === 0) continue;
+              var sSaved = puzzle[sr][sc];
+              puzzle[sr][sc] = 0;
+              var sCopy = puzzle.map(function (row) { return row.slice(); });
+              if (countSolutions(sCopy, 2) !== 1) {
+                puzzle[sr][sc] = sSaved;
+              } else {
+                givens -= 1;
+                removedSingle += 1;
+              }
+            }
+            if (removedSingle === 0) break;
+          }
           activeRng = null;
           return { puzzle: puzzle, solution: solution };
         }

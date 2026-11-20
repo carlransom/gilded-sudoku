@@ -792,6 +792,66 @@
       .acct-msg.err { color: var(--error); }
       @media (prefers-color-scheme: dark) { .acct-msg { color: var(--gold-bright); } }
 
+      /* ---------- New: menu, settings, coach, toast, interstitial ---------- */
+      .menu-row { display: flex; gap: 8px; margin-top: 10px; }
+      .menu-row button {
+        flex: 1; border: 1px solid var(--gold-deep); background: transparent; color: var(--gold-deep);
+        font: inherit; font-size: 11.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+        border-radius: 999px; padding: 8px 0; cursor: pointer; min-height: 38px;
+      }
+      .reward-hints {
+        margin-top: 8px; width: 100%;
+        border: 1px dashed var(--gold-deep); background: #fffdf4; color: var(--gold-deep);
+        font: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+        border-radius: 999px; padding: 8px 0; cursor: pointer; min-height: 38px;
+      }
+      .pad.large button { font-size: 26px; min-height: 58px; padding: 12px 0 13px; }
+      .coach-list { text-align: left; margin-bottom: 16px; }
+      .coach-list p { margin: 0 0 9px; }
+      .set-row {
+        display: flex; justify-content: space-between; align-items: center; gap: 14px;
+        padding: 9px 2px; border-top: 1px dashed #ddd2ae;
+        font-size: 14px; color: #57503e; text-align: left;
+      }
+      .set-row select {
+        font: inherit; font-size: 14px; padding: 6px 8px;
+        border: 1px solid #d8cb9e; border-radius: 8px; background: #fffdf6; color: #17150f; min-height: 36px;
+      }
+      .set-row button {
+        border: 1px solid var(--gold-deep); background: transparent; color: var(--gold-deep);
+        font: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+        border-radius: 999px; padding: 6px 14px; cursor: pointer; min-height: 34px;
+      }
+      .set-row button[aria-pressed="true"] { background: linear-gradient(180deg, #f7d774, #eec95c); color: #2a2103; }
+      .sheet .perks { text-align: left; margin: 0 0 14px; padding: 0; list-style: none; }
+      .sheet .perks li { padding: 6px 2px 6px 22px; position: relative; font-size: 14px; color: #57503e; border-top: 1px dashed #ddd2ae; }
+      .sheet .perks li:first-child { border-top: 0; }
+      .sheet .perks li::before { content: "\2726"; position: absolute; left: 2px; color: var(--gold-deep); }
+      .sheet .gilded-ask {
+        display: block; width: 100%; border: 0; background: transparent; color: var(--gold-deep);
+        font: inherit; font-size: 13.5px; font-weight: 600; padding: 4px 0 10px; cursor: pointer; min-height: 36px;
+        text-decoration: underline; text-underline-offset: 3px;
+      }
+      .sheet .gilded-ask[hidden] { display: none; }
+      .sheet.interstitial { position: relative; }
+      .interstitial .x-close {
+        position: absolute; top: 10px; right: 12px; border: 0; background: transparent;
+        font-size: 17px; color: #6d6247; cursor: pointer; min-height: 36px; min-width: 36px;
+      }
+      .interstitial .adtag {
+        font-size: 8.5px; letter-spacing: 0.28em; text-transform: uppercase; color: #9a8a58;
+        display: block; margin-bottom: 6px;
+      }
+      .toast {
+        position: fixed; left: 50%; bottom: 22px; z-index: 80;
+        transform: translateX(-50%) translateY(16px);
+        background: #14120c; color: #f3d97b; font-size: 13.5px;
+        padding: 11px 18px; border-radius: 999px; box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+        opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease;
+        max-width: min(92vw, 430px); text-align: center;
+      }
+      .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
       @media (prefers-reduced-motion: reduce) {
         * { transition: none !important; animation: none !important; }
       }
@@ -860,6 +920,8 @@
               </button>
             </div>
 
+            <button type="button" class="reward-hints" id="rewardHintBtn" hidden>Watch ad for 3 hints</button>
+
             <div class="pad" id="pad" aria-label="Number pad"></div>
 
             <button type="button" class="newgame" id="newGameBtn">New Game</button>
@@ -879,7 +941,7 @@
                 <div class="qicon" aria-hidden="true">&#10022;</div>
                 <div class="qbody">
                   <b>Daily Puzzle &mdash; <span id="dailyDateLabel">today</span></b>
-                  <span>One puzzle, the same for every player today. Day streak: <b style="display:inline; font-size:12px;" id="dailyStreakVal">0 days</b></span>
+                  <span>One puzzle, the same for every player today. Day streak: <b style="display:inline; font-size:12px;" id="dailyStreakVal">0 days</b> &middot; Streak freezes: <b style="display:inline; font-size:12px;" id="dailyFreezesVal">0</b></span>
                 </div>
                 <button type="button" id="dailyBtn">Play</button>
               </div>
@@ -901,6 +963,12 @@
                 <div class="bt"><span>Best &middot; Advanced</span><b data-best="advanced">&mdash;</b></div>
               </div>
 
+              <div class="menu-row">
+                <button type="button" id="statsBtn">Stats</button>
+                <button type="button" id="settingsBtn">Settings</button>
+                <button type="button" id="lbBtn">Leaderboard</button>
+              </div>
+
               <p class="save-note">&#10022; Saved on this device as you play</p>
               <button type="button" class="reset-progress" id="resetBtn">Reset saved progress</button>
             </div>
@@ -911,7 +979,7 @@
                 <div class="admark">A</div>
                 <p><b>Your ad could be here</b>Banner placement shown at playing size &mdash; this is where ads run in the free version.</p>
               </div>
-              <button type="button" class="remove-ads" id="removeAdsBtn">Remove Ads &mdash; $2.99</button>
+              <button type="button" class="remove-ads" id="removeAdsBtn">Go Gilded &mdash; $2.99</button>
             </div>
             <div class="adfree-note" id="adFreeNote">&#10022; Ad-free &mdash; thank you for supporting the game</div>
           </div>
@@ -939,23 +1007,103 @@
                 <div class="sl"><span>Lifetime total &middot; <span id="winRank">Clay</span></span><b id="winLifetime">0</b></div>
               </div>
               <p class="new-badges" id="winBadges"></p>
+              <button type="button" class="gilded-ask" id="winGildedBtn" hidden>Loved that? Go Gilded &mdash; ad-free forever for $2.99</button>
               <button type="button" class="primary" id="winNewBtn">Play Again</button>
+              <button type="button" class="ghost" id="winShareBtn" hidden>Share today&rsquo;s result</button>
               <button type="button" class="ghost" id="winCloseBtn">Admire the board</button>
             </div>
           </div>
 
-          <!-- Remove-ads sheet -->
+          <!-- Gilded bundle sheet -->
           <div class="veil" id="buyVeil" role="dialog" aria-modal="true" aria-labelledby="buyTitle">
             <div class="sheet">
-              <h2 id="buyTitle">Remove Ads</h2>
-              <p>One purchase, gone for good &mdash; no subscription, no account. Every banner disappears on this device, forever.</p>
+              <h2 id="buyTitle">Gilded</h2>
+              <p>One purchase unlocks the full bundle &mdash; no subscription, no account.</p>
+              <ul class="perks">
+                <li>No ads ever</li>
+                <li>Pick your fighter for win videos</li>
+                <li>Dragon Spirit &mdash; exclusive fighter</li>
+                <li>Gold board theme</li>
+              </ul>
               <div class="price">$2.99</div>
               <div class="once">One-time purchase</div>
-              <button type="button" class="primary" id="buyPreviewBtn">Preview the Ad-Free Version</button>
+              <button type="button" class="primary" id="buyBtn">Get Gilded &mdash; $2.99</button>
               <button type="button" class="ghost" id="buyCloseBtn">Not now</button>
-              <p style="margin:12px 0 0; font-size:11.5px; color:#9a8a58;">In this web version this previews the ad-free layout &mdash; the $2.99 checkout itself runs through the App Store / Google Play in the store release.</p>
             </div>
           </div>
+
+          <!-- First-run coach -->
+          <div class="veil" id="coachVeil" role="dialog" aria-modal="true" aria-labelledby="coachTitle">
+            <div class="sheet">
+              <h2 id="coachTitle">How to play</h2>
+              <div class="coach-list">
+                <p><b>1 &middot; Tap a cell</b> &mdash; pick an empty square on the board.</p>
+                <p><b>2 &middot; Tap a number</b> &mdash; fill it in. Every row, column, and 3&times;3 box needs 1&ndash;9 exactly once.</p>
+                <p><b>3 &middot; Notes</b> &mdash; pencil in candidates when you&rsquo;re not sure yet.</p>
+                <p><b>4 &middot; Hint</b> &mdash; stuck? A hint fills one cell, but costs points.</p>
+                <p><b>5 &middot; Erase &amp; Undo</b> &mdash; clear a cell, or take back your last move.</p>
+              </div>
+              <button type="button" class="primary" id="coachBtn">Got it</button>
+            </div>
+          </div>
+
+          <!-- Stats sheet -->
+          <div class="veil" id="statsVeil" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
+            <div class="sheet">
+              <h2 id="statsTitle">Your Stats</h2>
+              <div class="score-lines" id="statsBody"></div>
+              <button type="button" class="primary" data-close="statsVeil">Done</button>
+            </div>
+          </div>
+
+          <!-- Settings sheet -->
+          <div class="veil" id="settingsVeil" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+            <div class="sheet">
+              <h2 id="settingsTitle">Settings</h2>
+              <label class="set-row"><span>Fighter &mdash; win video</span>
+                <select id="fighterSel">
+                  <option value="random">Random</option>
+                  <option value="wolf">Wolf</option>
+                  <option value="panther">Panther</option>
+                  <option value="tiger">Tiger</option>
+                  <option value="dragon" disabled>Dragon &mdash; Gilded only</option>
+                </select>
+              </label>
+              <label class="set-row"><span>Board theme</span>
+                <select id="themeSel">
+                  <option value="porcelain">Porcelain</option>
+                  <option value="gold" disabled>Gold &mdash; Gilded only</option>
+                </select>
+              </label>
+              <div class="set-row"><span>Large number pad</span><button type="button" id="largePadBtn" aria-pressed="false">Off</button></div>
+              <button type="button" class="primary" data-close="settingsVeil" style="margin-top:14px;">Done</button>
+            </div>
+          </div>
+
+          <!-- Weekly leaderboard sheet -->
+          <div class="veil" id="lbVeil" role="dialog" aria-modal="true" aria-labelledby="lbTitle">
+            <div class="sheet">
+              <h2 id="lbTitle">Weekly Leaderboard</h2>
+              <p>Top scores this week, from Monday. Signed-in players only.</p>
+              <div class="score-lines" id="lbList"><div class="sl"><span>Loading&hellip;</span><b></b></div></div>
+              <button type="button" class="primary" data-close="lbVeil">Done</button>
+            </div>
+          </div>
+
+          <!-- Between-games interstitial: house card when no ad fills -->
+          <div class="veil" id="interstitialVeil" role="dialog" aria-modal="true" aria-label="Advertisement">
+            <div class="sheet interstitial">
+              <button type="button" class="x-close" id="interstitialClose" aria-label="Close">&#10005;</button>
+              <span class="adtag">Advertisement</span>
+              <h2>Go Gilded</h2>
+              <p>No ads ever &middot; pick your fighter &middot; Dragon Spirit exclusive &middot; gold board theme.</p>
+              <div class="price">$2.99</div>
+              <div class="once">One-time purchase</div>
+              <button type="button" class="primary" id="interstitialGo">Continue to your game</button>
+            </div>
+          </div>
+
+          <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
         </div>
       </div>
@@ -1090,10 +1238,10 @@
         <h3>How it makes money</h3>
         <div class="money">
           <p><b>Free to download and play.</b> A single banner sits under the game &mdash; never over the board, never mid-move.</p>
-          <div class="rowline"><span>Remove ads, one-time</span><span>$2.99</span></div>
+          <div class="rowline"><span>Gilded bundle, one-time</span><span>$2.99</span></div>
           <div class="rowline"><span>Google Play developer account</span><span>$25 once</span></div>
           <div class="rowline"><span>Apple Developer Program</span><span>$99 / year</span></div>
-          <p style="margin-top:10px;">Tap <b>Remove Ads</b> on the phone to preview exactly what a paying player sees.</p>
+          <p style="margin-top:10px;">Tap <b>Go Gilded</b> on the phone to see everything the bundle includes.</p>
         </div>
 
         <p class="tryline"><b>Try it:</b> place numbers and watch the score climb &mdash; chain correct cells to raise the streak multiplier and hear the chime climb a note with each one in a row, and notice what a hint costs you. Finish a puzzle and a spirit animal &mdash; wolf, panther, or tiger &mdash; marks the win with a three-second demonstration, strike flowing into a defensive stance, before the full score breakdown, your first badge, and the start of the climb from Clay. Everything saves on this device as you play &mdash; close the page mid-puzzle and you&rsquo;ll come back to the same board, score, streak, and timer.</p>
@@ -1279,7 +1427,11 @@
           dailyStreak: 0,
           dailyLastKey: null,
           weekKey: weekKey(),
-          weeklyAdvanced: 0
+          weeklyAdvanced: 0,
+          freezes: 0,
+          weekPoints: 0,
+          totalMistakes: 0,
+          timeByTier: { easy: 0, normal: 0, advanced: 0 }
         };
 
         /* ---------- On-device saving ----------
@@ -1300,7 +1452,11 @@
             dailyStreak: 0,
             dailyLastKey: null,
             weekKey: weekKey(),
-            weeklyAdvanced: 0
+            weeklyAdvanced: 0,
+            freezes: 0,
+            weekPoints: 0,
+            totalMistakes: 0,
+            timeByTier: { easy: 0, normal: 0, advanced: 0 }
           };
         }
         function persist() {
@@ -1311,6 +1467,9 @@
               life: life,
               soundOn: soundOn,
               adFree: adFree,
+              fighter: fighterPref,
+              largePad: largePad,
+              coachSeen: coachSeen,
               game: null
             };
             if (state.puzzle && state.solution) {
@@ -1335,7 +1494,8 @@
                 hintCostTotal: state.hintCostTotal,
                 streak: state.streak,
                 scored: state.scored,
-                history: state.history
+                history: state.history,
+                freeHints: state.freeHints
               };
             }
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -1375,6 +1535,14 @@
           if (typeof saved.dailyLastKey === "string") d.dailyLastKey = saved.dailyLastKey;
           if (typeof saved.weekKey === "string") d.weekKey = saved.weekKey;
           if (typeof saved.weeklyAdvanced === "number") d.weeklyAdvanced = saved.weeklyAdvanced;
+          if (typeof saved.freezes === "number") d.freezes = saved.freezes;
+          if (typeof saved.weekPoints === "number") d.weekPoints = saved.weekPoints;
+          if (typeof saved.totalMistakes === "number") d.totalMistakes = saved.totalMistakes;
+          if (saved.timeByTier) {
+            ["easy", "normal", "advanced"].forEach(function (t) {
+              if (typeof saved.timeByTier[t] === "number") d.timeByTier[t] = saved.timeByTier[t];
+            });
+          }
           life = d;
         }
         function isGrid(x) {
@@ -1399,7 +1567,7 @@
           seconds: 0, timerId: null, paused: false, won: false,
           history: [],
           score: 0, cellPoints: 0, hintCostTotal: 0,
-          streak: 0, scored: {}, isDaily: false
+          streak: 0, scored: {}, isDaily: false, freeHints: 0
         };
 
         var boardEl = document.getElementById("board");
@@ -1418,6 +1586,13 @@
         var audioCtx = null;
         var soundOn = true;
         var adFree = false;
+        var fighterPref = "random";
+        var largePad = false;
+        var coachSeen = false;
+        /* Flip to true the day ads actually serve — that one line reveals
+           the "Watch ad for 3 hints" rewarded button. Until then the
+           button stays hidden: no dead buttons. */
+        var ADS_READY = false;
         function ensureAudio() {
           if (!soundOn) return null;
           if (!audioCtx) {
@@ -1505,7 +1680,18 @@
           { src: "videos/panther-female-jump.mp4",   label: "Panther Spirit · Leaping Strike" },
           { src: "videos/tiger-male-knee.mp4",       label: "Tiger Spirit · Knee Strike" }
         ];
-        var lastClipIdx = -1;
+        /* The Dragon clip is exclusive to the Gilded bundle — it is NOT
+           part of WIN_CLIPS, so it never enters the free random rotation;
+           it only plays when the Dragon fighter is picked (Gilded). */
+        var DRAGON_CLIP = { src: "videos/dragon-kick.mp4", label: "Dragon Spirit · Spinning Kick" };
+        var lastClipSrc = "";
+        function clipPool() {
+          if (fighterPref === "dragon") return [DRAGON_CLIP];
+          if (fighterPref === "wolf" || fighterPref === "panther" || fighterPref === "tiger") {
+            return WIN_CLIPS.filter(function (cl) { return cl.src.indexOf(fighterPref) !== -1; });
+          }
+          return WIN_CLIPS.slice();
+        }
         var winVideoWrap = document.getElementById("winVideoWrap");
         var winVideo = document.getElementById("winVideo");
         var winVideoCap = document.getElementById("winVideoCap");
@@ -1517,7 +1703,8 @@
         var winVideoOrder = [];
         var winVideoPos = 0;
         var winVideoAttempt = 0;
-        var winVideoClipIdx = -1;
+        var winVideoClip = null;
+        var winVideoPool = [];
         var winVideoWatchdog = null;
         var winVideoRetryTimer = null;
         var winVideoReducedMotion = false;
@@ -1525,21 +1712,23 @@
           if (winVideoWatchdog) { clearTimeout(winVideoWatchdog); winVideoWatchdog = null; }
           if (winVideoRetryTimer) { clearTimeout(winVideoRetryTimer); winVideoRetryTimer = null; }
         }
-        function buildWinVideoOrder(firstIdx) {
-          var rest = [];
-          for (var i = 0; i < WIN_CLIPS.length; i++) if (i !== firstIdx) rest.push(i);
+        function buildWinVideoOrder(pool, firstClip) {
+          var rest = pool.filter(function (cl) { return cl !== firstClip; });
           for (var j = rest.length - 1; j > 0; j--) {
             var k = Math.floor(Math.random() * (j + 1));
             var tmp = rest[j]; rest[j] = rest[k]; rest[k] = tmp;
           }
-          return [firstIdx].concat(rest);
+          return [firstClip].concat(rest);
         }
-        function pickWinVideoFirst() {
-          var idx = Math.floor(Math.random() * WIN_CLIPS.length);
-          if (WIN_CLIPS.length > 1) {
-            while (idx === lastClipIdx) idx = Math.floor(Math.random() * WIN_CLIPS.length);
+        function pickWinVideoFirst(pool) {
+          var clip = pool[Math.floor(Math.random() * pool.length)];
+          if (pool.length > 1) {
+            var guard = 0;
+            while (clip.src === lastClipSrc && guard++ < 12) {
+              clip = pool[Math.floor(Math.random() * pool.length)];
+            }
           }
-          return idx;
+          return clip;
         }
         /* Advance past a failed clip exactly once per attempt: an
            error event and a rejected play() for the same clip must
@@ -1556,11 +1745,11 @@
         });
         winVideo.addEventListener("canplay", function () {
           if (winVideoWatchdog) { clearTimeout(winVideoWatchdog); winVideoWatchdog = null; }
-          if (winVideoActive && winVideoClipIdx >= 0) lastClipIdx = winVideoClipIdx;
+          if (winVideoActive && winVideoClip) lastClipSrc = winVideoClip.src;
         });
         winVideo.addEventListener("playing", function () {
           if (winVideoWatchdog) { clearTimeout(winVideoWatchdog); winVideoWatchdog = null; }
-          if (winVideoActive && winVideoClipIdx >= 0) lastClipIdx = winVideoClipIdx;
+          if (winVideoActive && winVideoClip) lastClipSrc = winVideoClip.src;
         });
         function attemptWinVideoPlay(attempt) {
           if (winVideoReducedMotion) return;
@@ -1597,7 +1786,7 @@
           if (winVideoPos >= winVideoOrder.length) {
             /* Every clip failed on this pass — start a fresh pass
                rather than giving up; the demo must always show. */
-            winVideoOrder = buildWinVideoOrder(pickWinVideoFirst());
+            winVideoOrder = buildWinVideoOrder(winVideoPool, pickWinVideoFirst(winVideoPool));
             winVideoPos = 0;
             var retryAttempt = winVideoAttempt;
             winVideoRetryTimer = setTimeout(function () {
@@ -1607,8 +1796,8 @@
           }
           winVideoAttempt++;
           var attempt = winVideoAttempt;
-          winVideoClipIdx = winVideoOrder[winVideoPos];
-          var clip = WIN_CLIPS[winVideoClipIdx];
+          var clip = winVideoOrder[winVideoPos];
+          winVideoClip = clip;
           winVideoCap.textContent = clip.label;
           winVideoWrap.hidden = false;
           winVideo.muted = !soundOn;
@@ -1632,7 +1821,7 @@
           clearWinVideoTimers();
           winVideoOrder = [];
           winVideoPos = 0;
-          winVideoClipIdx = -1;
+          winVideoClip = null;
           try { winVideo.pause(); } catch (e) {}
           winVideo.removeAttribute("src");
           try { winVideo.load(); } catch (e) {}
@@ -1643,7 +1832,8 @@
           winVideoAttempt++;
           clearWinVideoTimers();
           winVideoReducedMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-          winVideoOrder = buildWinVideoOrder(pickWinVideoFirst());
+          winVideoPool = clipPool();
+          winVideoOrder = buildWinVideoOrder(winVideoPool, pickWinVideoFirst(winVideoPool));
           winVideoPos = 0;
           winVideoWrap.hidden = false;
           tryWinVideoClip();
@@ -1709,6 +1899,8 @@
             }
           });
 
+          applyDailyRollover();
+          document.getElementById("dailyFreezesVal").textContent = life.freezes;
           document.getElementById("dailyStreakVal").textContent =
             life.dailyStreak + (life.dailyStreak === 1 ? " day" : " days");
           document.getElementById("panelDailyStreak").textContent = life.dailyStreak + "-day streak";
@@ -1783,8 +1975,18 @@
         }
         function stopTimer() { if (state.timerId) clearInterval(state.timerId); state.timerId = null; }
 
+        var interstitialPending = false;
+        var pendingGameArgs = null;
         function newGame(diff, opts) {
           opts = opts || {};
+          if (interstitialPending) {
+            /* Every 3rd completed puzzle: the between-games slot comes
+               first; the requested game starts when it closes. */
+            interstitialPending = false;
+            pendingGameArgs = { diff: diff, opts: opts };
+            document.getElementById("interstitialVeil").classList.add("open");
+            return;
+          }
           state.diff = diff;
           state.isDaily = !!opts.daily;
           var gen = opts.daily
@@ -1865,8 +2067,10 @@
             if (num !== state.solution[r][c]) {
               state.mistakes++;
               playMistake();
+              if (navigator.vibrate) navigator.vibrate(20);
               if (state.streak > 0) { state.streak = 0; renderProgress(); }
             } else {
+              if (navigator.vibrate) navigator.vibrate(10);
               clearNotesAround(r, c, num);
               if (!wasCorrect && !state.scored[state.selected]) {
                 state.scored[state.selected] = true;
@@ -1943,7 +2147,8 @@
           clearNotesAround(rr, cc, state.solution[rr][cc]);
           state.scored[target] = true;
           state.hints++;
-          var cost = SCORING[state.diff].hintCost;
+          var cost = state.freeHints > 0 ? 0 : SCORING[state.diff].hintCost;
+          if (state.freeHints > 0) { state.freeHints--; updateRewardBtn(); }
           var beforeHint = state.score;
           state.score = Math.max(0, state.score - cost);
           var charged = beforeHint - state.score;
@@ -1953,6 +2158,27 @@
           renderProgress();
           render();
           checkWin();
+        }
+
+        /* Streak freeze: when whole days were missed since the last
+           daily solve, each missed day burns one earned freeze and the
+           streak survives; with too few freezes the streak breaks.
+           Idempotent — after it runs, no days count as missed. */
+        function keyToDate(k) {
+          var p = k.split("-");
+          return new Date(+p[0], +p[1] - 1, +p[2]);
+        }
+        function applyDailyRollover() {
+          if (!life.dailyLastKey || life.dailyStreak <= 0) return;
+          var missed = Math.round((keyToDate(todayKey(0)) - keyToDate(life.dailyLastKey)) / 86400000) - 1;
+          if (missed <= 0) return;
+          if (life.freezes >= missed) {
+            life.freezes -= missed;
+            life.dailyLastKey = todayKey(-1);
+          } else {
+            life.dailyStreak = 0;
+            life.dailyLastKey = null;
+          }
         }
 
         function checkWin() {
@@ -1976,12 +2202,17 @@
           life.total += finalScore;
           life.wins++;
           life.winsByTier[state.diff]++;
+          life.timeByTier[state.diff] += state.seconds;
+          life.totalMistakes += state.mistakes;
           var isRecord = life.best[state.diff] == null || state.seconds < life.best[state.diff];
           if (isRecord) life.best[state.diff] = state.seconds;
-          if (life.weekKey !== weekKey()) { life.weekKey = weekKey(); life.weeklyAdvanced = 0; }
+          if (life.weekKey !== weekKey()) { life.weekKey = weekKey(); life.weeklyAdvanced = 0; life.weekPoints = 0; }
+          life.weekPoints += finalScore;
           if (state.diff === "advanced") life.weeklyAdvanced = Math.min(WEEKLY_TARGET, life.weeklyAdvanced + 1);
+          if (state.isDaily) applyDailyRollover();
           if (state.isDaily && life.dailyDoneKey !== todayKey(0)) {
             life.dailyStreak = life.dailyLastKey === todayKey(-1) ? life.dailyStreak + 1 : 1;
+            if (life.dailyStreak % 7 === 0) life.freezes++;
             life.dailyLastKey = todayKey(0);
             life.dailyDoneKey = todayKey(0);
           }
@@ -2029,6 +2260,9 @@
           var nb = document.getElementById("winBadges");
           nb.textContent = notes.join("  ");
           nb.classList.toggle("show", notes.length > 0);
+          if (!adFree && life.wins % 3 === 0) interstitialPending = true;
+          document.getElementById("winShareBtn").hidden = !state.isDaily;
+          document.getElementById("winGildedBtn").hidden = life.wins !== 3;
           setTimeout(function () {
             document.getElementById("winVeil").classList.add("open");
           }, 350);
@@ -2133,12 +2367,133 @@
         var buyVeil = document.getElementById("buyVeil");
         document.getElementById("removeAdsBtn").addEventListener("click", function () { buyVeil.classList.add("open"); });
         document.getElementById("buyCloseBtn").addEventListener("click", function () { buyVeil.classList.remove("open"); });
-        document.getElementById("buyPreviewBtn").addEventListener("click", function () {
-          buyVeil.classList.remove("open");
-          adFree = true;
-          applyAdFree();
+        document.getElementById("buyBtn").addEventListener("click", function () {
+          /* No payment plumbing yet — never pretend to charge. */
+          showToast("Checkout isn't wired up yet — coming with the store release.");
+        });
+
+        /* ---------- Toast ---------- */
+        var toastTimer = null;
+        function showToast(msg) {
+          var t = document.getElementById("toast");
+          t.textContent = msg;
+          t.classList.add("show");
+          if (toastTimer) clearTimeout(toastTimer);
+          toastTimer = setTimeout(function () { t.classList.remove("show"); }, 3400);
+        }
+
+        /* ---------- Rewarded hints (hidden until ADS_READY) ---------- */
+        var rewardHintBtn = document.getElementById("rewardHintBtn");
+        function updateRewardBtn() {
+          rewardHintBtn.hidden = !ADS_READY;
+          rewardHintBtn.textContent = state.freeHints > 0
+            ? "Free hints: " + state.freeHints + " — tap Hint to use one"
+            : "Watch ad for 3 hints";
+        }
+        rewardHintBtn.addEventListener("click", function () {
+          state.freeHints += 3;
+          updateRewardBtn();
+          showToast("3 free hints added.");
           persist();
         });
+
+        /* ---------- Sheets: stats, settings, leaderboard, coach ---------- */
+        document.querySelectorAll("[data-close]").forEach(function (b) {
+          b.addEventListener("click", function () {
+            document.getElementById(b.getAttribute("data-close")).classList.remove("open");
+          });
+        });
+        function renderStats() {
+          var names = { easy: "Easy", normal: "Normal", advanced: "Advanced" };
+          var html = "";
+          ["easy", "normal", "advanced"].forEach(function (t) {
+            var w = life.winsByTier[t];
+            var avg = w > 0 ? fmt(Math.round(life.timeByTier[t] / w)) : "—";
+            var best = life.best[t] == null ? "—" : fmt(life.best[t]);
+            html += '<div class="sl"><span>' + names[t] + " — " + w + " wins · avg " + avg + '</span><b>Best ' + best + "</b></div>";
+          });
+          var acc = life.wins > 0 ? (life.totalMistakes / life.wins).toFixed(1) : "0.0";
+          html += '<div class="sl"><span>Accuracy — mistakes per game</span><b>' + acc + "</b></div>";
+          var rk = rankFor(life.total);
+          html += '<div class="sl total"><span>Rank — ' + rk.cur.name + '</span><b>' + fmtPts(life.total) + " pts</b></div>";
+          html += '<div class="sl"><span>' + (rk.next ? fmtPts(rk.next.at - life.total) + " pts to " + rk.next.name : "Top rank reached") + '</span><b>' + life.wins + " wins</b></div>";
+          document.getElementById("statsBody").innerHTML = html;
+        }
+        document.getElementById("statsBtn").addEventListener("click", function () {
+          renderStats();
+          document.getElementById("statsVeil").classList.add("open");
+        });
+        var fighterSel = document.getElementById("fighterSel");
+        var largePadBtn = document.getElementById("largePadBtn");
+        function syncLargePadBtn() {
+          largePadBtn.textContent = largePad ? "On" : "Off";
+          largePadBtn.setAttribute("aria-pressed", largePad ? "true" : "false");
+        }
+        document.getElementById("settingsBtn").addEventListener("click", function () {
+          fighterSel.value = fighterPref;
+          syncLargePadBtn();
+          document.getElementById("settingsVeil").classList.add("open");
+        });
+        fighterSel.addEventListener("change", function () {
+          fighterPref = fighterSel.value;
+          persist();
+        });
+        largePadBtn.addEventListener("click", function () {
+          largePad = !largePad;
+          padEl.classList.toggle("large", largePad);
+          syncLargePadBtn();
+          persist();
+        });
+        document.getElementById("lbBtn").addEventListener("click", function () {
+          var listEl = document.getElementById("lbList");
+          listEl.innerHTML = '<div class="sl"><span>Loading…</span><b></b></div>';
+          document.getElementById("lbVeil").classList.add("open");
+          /* The Firebase script listens for this and fills the list. */
+          window.dispatchEvent(new Event("gilded:lb-open"));
+          setTimeout(function () {
+            if (listEl.textContent.indexOf("Loading") === 0) {
+              listEl.innerHTML = '<div class="sl"><span>Leaderboard unavailable right now.</span><b></b></div>';
+            }
+          }, 2500);
+        });
+        document.getElementById("coachBtn").addEventListener("click", function () {
+          coachSeen = true;
+          document.getElementById("coachVeil").classList.remove("open");
+          persist();
+        });
+
+        /* ---------- Win sheet: daily share + 3rd-win Gilded ask ---------- */
+        document.getElementById("winShareBtn").addEventListener("click", function () {
+          var text = "Solved today's Gilded Sudoku in " + fmt(state.seconds) + " with " +
+            state.mistakes + (state.mistakes === 1 ? " mistake" : " mistakes") +
+            " — https://blue-rock-01f35150f.5.azurestaticapps.net";
+          if (navigator.share) {
+            navigator.share({ text: text }).catch(function () {});
+          } else if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () {
+              showToast("Result copied — paste it anywhere.");
+            }, function () { showToast("Sharing isn't available here."); });
+          } else {
+            showToast("Sharing isn't available here.");
+          }
+        });
+        document.getElementById("winGildedBtn").addEventListener("click", function () {
+          document.getElementById("winVeil").classList.remove("open");
+          stopWinVideo();
+          buyVeil.classList.add("open");
+        });
+
+        /* ---------- Interstitial close → start the pending game ---------- */
+        function closeInterstitial() {
+          document.getElementById("interstitialVeil").classList.remove("open");
+          if (pendingGameArgs) {
+            var a = pendingGameArgs;
+            pendingGameArgs = null;
+            newGame(a.diff, a.opts);
+          }
+        }
+        document.getElementById("interstitialClose").addEventListener("click", closeInterstitial);
+        document.getElementById("interstitialGo").addEventListener("click", closeInterstitial);
 
         /* Keyboard play */
         document.addEventListener("keydown", function (e) {
@@ -2161,7 +2516,17 @@
            timer and board never lose the last few seconds. */
         window.addEventListener("pagehide", persist);
         document.addEventListener("visibilitychange", function () {
-          if (document.visibilityState === "hidden") persist();
+          if (document.visibilityState === "hidden") {
+            /* Auto-pause: leaving the app freezes the clock; the paused
+               veil and the Resume button are waiting on return. */
+            if (state.puzzle && !state.won && !state.paused) {
+              state.paused = true;
+              pauseBtn.textContent = "Resume";
+              frameEl.classList.add("is-paused");
+              boardEl.classList.add("paused");
+            }
+            persist();
+          }
         });
 
         /* Reset saved progress — two taps, so it can't happen by accident */
@@ -2213,6 +2578,7 @@
           state.hintCostTotal = g.hintCostTotal || 0;
           state.streak = g.streak || 0;
           state.scored = (g.scored && typeof g.scored === "object") ? g.scored : {};
+          state.freeHints = g.freeHints || 0;
           document.getElementById("dailyLine").classList.toggle("show", state.isDaily);
           document.querySelectorAll(".tiers button").forEach(function (b) {
             b.setAttribute("aria-pressed", b.getAttribute("data-diff") === state.diff ? "true" : "false");
@@ -2230,13 +2596,16 @@
 
         (function init() {
           var saved = loadSave();
+          var firstRun = !saved;
           var restored = false;
           if (saved) {
             applyLife(saved.life);
+            applyDailyRollover();
             /* A new week restarts the weekly goal; badges already earned stay earned. */
             if (life.weekKey !== weekKey()) {
               life.weekKey = weekKey();
               life.weeklyAdvanced = 0;
+              life.weekPoints = 0;
             }
             if (typeof saved.soundOn === "boolean") {
               soundOn = saved.soundOn;
@@ -2244,6 +2613,12 @@
               soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
             }
             if (saved.adFree) { adFree = true; applyAdFree(); }
+            if (typeof saved.fighter === "string" && saved.fighter !== "dragon") fighterPref = saved.fighter;
+            if (typeof saved.largePad === "boolean" && saved.largePad) {
+              largePad = true;
+              padEl.classList.add("large");
+            }
+            if (saved.coachSeen) coachSeen = true;
             var g = saved.game;
             /* Resume the puzzle in progress — unless it was already won,
                or it is a daily puzzle left over from a previous day. */
@@ -2254,7 +2629,9 @@
             }
           }
           if (!restored) newGame("easy");
+          updateRewardBtn();
           persist();
+          if (firstRun && !coachSeen) document.getElementById("coachVeil").classList.add("open");
         })();
       })();
     </script>
@@ -2338,7 +2715,9 @@
             best: { easy: null, normal: null, advanced: null },
             badges: {},
             dailyDoneKey: null, dailyStreak: 0, dailyLastKey: null,
-            weekKey: weekKey(), weeklyAdvanced: 0
+            weekKey: weekKey(), weeklyAdvanced: 0,
+            freezes: 0, weekPoints: 0, totalMistakes: 0,
+            timeByTier: { easy: 0, normal: 0, advanced: 0 }
           };
         }
         function sanitizeLife(saved) {
@@ -2362,6 +2741,12 @@
           if (typeof saved.dailyLastKey === "string") d.dailyLastKey = saved.dailyLastKey;
           if (typeof saved.weekKey === "string") d.weekKey = saved.weekKey;
           if (typeof saved.weeklyAdvanced === "number") d.weeklyAdvanced = saved.weeklyAdvanced;
+          if (typeof saved.freezes === "number") d.freezes = saved.freezes;
+          if (typeof saved.weekPoints === "number") d.weekPoints = saved.weekPoints;
+          if (typeof saved.totalMistakes === "number") d.totalMistakes = saved.totalMistakes;
+          if (saved.timeByTier) TIERS.forEach(function (t) {
+            if (typeof saved.timeByTier[t] === "number") d.timeByTier[t] = saved.timeByTier[t];
+          });
           return d;
         }
         function hasProgress(l) {
@@ -2398,6 +2783,13 @@
           } else {
             m.weekKey = weekKey(); m.weeklyAdvanced = 0;
           }
+          m.freezes = Math.max(a.freezes, b.freezes);
+          m.totalMistakes = Math.max(a.totalMistakes, b.totalMistakes);
+          TIERS.forEach(function (t) { m.timeByTier[t] = Math.max(a.timeByTier[t], b.timeByTier[t]); });
+          if (a.weekKey === b.weekKey) m.weekPoints = Math.max(a.weekPoints, b.weekPoints);
+          else if (b.weekKey === weekKey()) m.weekPoints = b.weekPoints;
+          else if (a.weekKey === weekKey()) m.weekPoints = a.weekPoints;
+          else m.weekPoints = 0;
           return m;
         }
 
@@ -2426,6 +2818,7 @@
         var currentUser = null;
         var syncReady = false;      /* true once the sign-in merge has run */
         var lastPushedJSON = null;  /* last life JSON known to be in the cloud */
+        var lbPushedKey = null;     /* last weekKey:points pushed to the leaderboard */
 
         function cloudSave(lifeObj) {
           if (!currentUser || !db) return;
@@ -2478,6 +2871,17 @@
           if (j !== lastPushedJSON) {
             lastPushedJSON = j;
             cloudSave(lifeNow);
+          }
+          /* Weekly leaderboard: mirror this week's points under the
+             player's uid whenever they change. */
+          var lbKey = lifeNow.weekKey + ":" + lifeNow.weekPoints;
+          if (lifeNow.weekPoints > 0 && lbKey !== lbPushedKey) {
+            lbPushedKey = lbKey;
+            db.collection("leaderboardWeekly").doc(currentUser.uid).set({
+              name: currentUser.displayName || "Player",
+              points: lifeNow.weekPoints,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).catch(function () { /* offline — the next change retries */ });
           }
         }, 2500);
 
@@ -2555,6 +2959,39 @@
           }).catch(function (err) {
             say(friendlyError(err), true);
           });
+        });
+
+        /* ----- Weekly leaderboard view (filled when the game opens it) ----- */
+        function escapeHtml(s) {
+          return String(s).replace(/[&<>"']/g, function (ch) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+          });
+        }
+        window.addEventListener("gilded:lb-open", function () {
+          var listEl = document.getElementById("lbList");
+          if (!listEl) return;
+          if (!currentUser) {
+            listEl.innerHTML = '<div class="sl"><span>Sign in to join the weekly leaderboard.</span><b></b></div>';
+            return;
+          }
+          var now = new Date();
+          var monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+          db.collection("leaderboardWeekly").orderBy("points", "desc").limit(10).get()
+            .then(function (snap) {
+              var rows = "";
+              var rank = 0;
+              snap.forEach(function (doc) {
+                var d = doc.data();
+                /* Only this week's entries count. */
+                if (d.updatedAt && d.updatedAt.toDate && d.updatedAt.toDate() < monday) return;
+                rank++;
+                rows += '<div class="sl"><span>' + rank + ". " + escapeHtml(d.name || "Player") + '</span><b>' + Number(d.points || 0).toLocaleString("en-US") + "</b></div>";
+              });
+              listEl.innerHTML = rows || '<div class="sl"><span>No scores yet this week — be the first.</span><b></b></div>';
+            })
+            .catch(function () {
+              listEl.innerHTML = '<div class="sl"><span>Couldn\'t load the leaderboard — try again in a moment.</span><b></b></div>';
+            });
         });
       })();
     </script>

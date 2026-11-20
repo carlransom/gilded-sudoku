@@ -3296,6 +3296,23 @@
   badge.textContent = 'QA running: ' + TIER + ' — starting…';
   document.body.appendChild(badge);
   function setStatus(t) { badge.textContent = t; }
+  var T0 = Date.now();
+  var curStep = 'init';
+  var lastStepAt = Date.now();
+  function trace(step) {
+    curStep = step;
+    lastStepAt = Date.now();
+    try {
+      QA.trace = QA.trace || [];
+      QA.trace.push({ t: Math.round((Date.now() - T0) / 1000), step: step, vis: document.visibilityState });
+      if (QA.trace.length > 200) QA.trace.shift();
+    } catch (e) {}
+    persistQA();
+    setStatus('QA running: ' + TIER + ' — ' + step + ' (' + Math.round((Date.now() - T0) / 1000) + 's, ' + document.visibilityState + ')');
+  }
+  setInterval(function () {
+    setStatus('QA running: ' + TIER + ' — ' + curStep + ' (' + Math.round((Date.now() - T0) / 1000) + 's, ' + document.visibilityState + ')');
+  }, 2000);
   window.addEventListener('error', function (e) { QA.errors.push(String(e.message)); persistQA(); });
   function waitFor(fn, timeout, label) {
     return new Promise(function (res, rej) {
@@ -3344,6 +3361,7 @@
     return n;
   }
   function solve(p) {
+    var solveSteps = 0;
     var g = p.map(function (row) { return row.slice(); });
     function safe(r, c, n) {
       for (var k = 0; k < 9; k++) if (g[r][k] === n || g[k][c] === n) return false;
@@ -3352,6 +3370,7 @@
       return true;
     }
     function rec() {
+      if (++solveSteps > 500000) throw new Error('solver exceeded 500k steps');
       for (var r = 0; r < 9; r++) for (var c = 0; c < 9; c++) {
         if (g[r][c] === 0) {
           for (var n = 1; n <= 9; n++) {
@@ -3394,6 +3413,7 @@
       await sleep(300);
     }
     document.querySelector('[data-diff="' + tier + '"]').click();
+    trace('tier button clicked: ' + tier);
     await sleep(500);
     if ($('interstitialVeil').classList.contains('open')) {
       QA.interstitialsSeen++; persistQA();
@@ -3404,6 +3424,7 @@
     await ensureUnpaused();
   }
   async function solveClean(sol) {
+    trace('filling cells');
     var els = cells();
     for (var i = 0; i < 81; i++) {
       if (els[i].textContent.trim() !== '') continue;
@@ -3414,6 +3435,7 @@
     }
   }
   async function observeWin(n) {
+    trace('observing win ' + n);
     await waitFor(function () { return $('winVeil').classList.contains('open'); }, 12000, 'win veil game ' + n);
     var v = $('winVideo');
     await sleep(800);
@@ -3448,10 +3470,12 @@
     await sleep(300);
   }
   async function playOne(n, mode) {
+    trace('playOne game ' + n + ' mode=' + mode);
     await startGame(TIER);
     var givens = readGivens();
     var gc = givensCount(givens);
     check('givens count correct (game ' + n + ', ' + TIER + ')', gc === DIFFS[TIER], String(gc) + ' expected ' + DIFFS[TIER]);
+    trace('solving puzzle');
     var sol = solve(givens);
     check('puzzle solvable (game ' + n + ')', !!sol, '');
     if (!sol) throw new Error('no solution for game ' + n);
@@ -3666,6 +3690,7 @@
     check('progress saved to localStorage', !!rec2 && !!(rec2.life && typeof rec2.life.total === 'number'), '');
   }
   function finish() {
+    try { clearTimeout(watchdog); } catch (e) {}
     var passed = QA.checks.filter(function (c) { return c.ok; }).length;
     var failed = QA.checks.filter(function (c) { return !c.ok; });
     var rec = record();
@@ -3693,8 +3718,20 @@
     window.__qaRunning = false;
     return summary;
   }
+  var watchdog = setTimeout(function () {
+    if (QA.gamesDone === 0 && Date.now() - lastStepAt > 180000) {
+      var stuck = { tier: TIER, step: curStep, elapsedSec: Math.round((Date.now() - T0) / 1000), visibility: document.visibilityState, trace: QA.trace || [], errors: QA.errors };
+      setStatus('QA STUCK: ' + TIER + ' — ' + curStep + ' after ' + stuck.elapsedSec + 's');
+      var preS = document.createElement('pre');
+      preS.id = 'qa-stuck';
+      preS.textContent = 'QA-STUCK ' + JSON.stringify(stuck, null, 2);
+      document.body.appendChild(preS);
+      console.log('QA-STUCK ' + JSON.stringify(stuck));
+    }
+  }, 360000);
   (async function main() {
     try {
+      trace('main start, gamesDone=' + QA.gamesDone + ', phase=' + QA.phase);
       if (QA.phase === 'persist-wait' && QA.persistSnapshot) {
         var snap = QA.persistSnapshot;
         var now = readBoardTexts();

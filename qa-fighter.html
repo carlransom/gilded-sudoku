@@ -3294,6 +3294,23 @@
   badge.textContent = 'Fighter QA running — starting…';
   document.body.appendChild(badge);
   function setStatus(t) { badge.textContent = t; }
+  var T0 = Date.now();
+  var curStep = 'init';
+  var lastStepAt = Date.now();
+  function trace(step) {
+    curStep = step;
+    lastStepAt = Date.now();
+    try {
+      QA.trace = QA.trace || [];
+      QA.trace.push({ t: Math.round((Date.now() - T0) / 1000), step: step, vis: document.visibilityState });
+      if (QA.trace.length > 200) QA.trace.shift();
+    } catch (e) {}
+    persist();
+    setStatus('Fighter QA running — ' + step + ' (' + Math.round((Date.now() - T0) / 1000) + 's, ' + document.visibilityState + ')');
+  }
+  setInterval(function () {
+    setStatus('Fighter QA running — ' + curStep + ' (' + Math.round((Date.now() - T0) / 1000) + 's, ' + document.visibilityState + ')');
+  }, 2000);
   window.addEventListener('error', function (e) { QA.errors.push(String(e.message)); persist(); });
   function waitFor(fn, timeout, label) {
     return new Promise(function (res, rej) {
@@ -3330,6 +3347,7 @@
     return g;
   }
   function solve(p) {
+    var solveSteps = 0;
     var g = p.map(function (row) { return row.slice(); });
     function safe(r, c, n) {
       for (var k = 0; k < 9; k++) if (g[r][k] === n || g[k][c] === n) return false;
@@ -3338,6 +3356,7 @@
       return true;
     }
     function rec() {
+      if (++solveSteps > 500000) throw new Error('solver exceeded 500k steps');
       for (var r = 0; r < 9; r++) for (var c = 0; c < 9; c++) {
         if (g[r][c] === 0) {
           for (var n = 1; n <= 9; n++) {
@@ -3365,6 +3384,7 @@
       await sleep(300);
     }
     document.querySelector('[data-diff="' + tier + '"]').click();
+    trace('tier button clicked: ' + tier);
     await sleep(500);
     if ($('interstitialVeil').classList.contains('open')) {
       $('interstitialGo').click();
@@ -3374,6 +3394,7 @@
     await ensureUnpaused();
   }
   async function solveClean(sol) {
+    trace('filling cells');
     var els = cells();
     for (var i = 0; i < 81; i++) {
       if (els[i].textContent.trim() !== '') continue;
@@ -3397,6 +3418,7 @@
   async function winAndCheckClip(expectPrefix, label) {
     setStatus('Fighter QA running — winning a game as ' + label + '…');
     await startGame('easy');
+    trace('solving puzzle');
     var sol = solve(readGivens());
     if (!sol) throw new Error('no solution for fighter game ' + label);
     await solveClean(sol);
@@ -3418,6 +3440,7 @@
     await sleep(300);
   }
   function finish() {
+    try { clearTimeout(watchdog); } catch (e) {}
     var passed = QA.checks.filter(function (c) { return c.ok; }).length;
     var failed = QA.checks.filter(function (c) { return !c.ok; });
     var summary = { checksPassed: passed, checksFailed: failed.length, failedChecks: failed, errors: QA.errors, wins: QA.wins };
@@ -3432,9 +3455,21 @@
     window.__qfRunning = false;
     return summary;
   }
+  var watchdog = setTimeout(function () {
+    if (QA.wins.length === 0 && Date.now() - lastStepAt > 180000) {
+      var stuck = { step: curStep, elapsedSec: Math.round((Date.now() - T0) / 1000), visibility: document.visibilityState, trace: QA.trace || [], errors: QA.errors };
+      setStatus('Fighter QA STUCK — ' + curStep + ' after ' + stuck.elapsedSec + 's');
+      var preS = document.createElement('pre');
+      preS.id = 'qa-stuck';
+      preS.textContent = 'QA-STUCK ' + JSON.stringify(stuck, null, 2);
+      document.body.appendChild(preS);
+      console.log('QA-STUCK ' + JSON.stringify(stuck));
+    }
+  }, 360000);
   (async function main() {
     try {
-      await waitFor(function () { return document.querySelectorAll('.cell').length === 81; }, 10000, 'board ready');
+      trace('main start, phase=' + QA.phase);
+    await waitFor(function () { return document.querySelectorAll('.cell').length === 81; }, 10000, 'board ready');
       await sleep(800);
       if (QA.phase === 'after-dragon-reload') {
         $('settingsBtn').click();

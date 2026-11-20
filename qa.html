@@ -3283,7 +3283,15 @@
   var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
   var saved = null;
   try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { saved = null; }
-  var QA = saved || { tier: TIER, checks: [], errors: [], games: [], gamesDone: 0, interstitialsSeen: 0, phase: 'run', baseWins: null, baseTotal: null, prevClip: '', persistSnapshot: null };
+  var QA = Object.assign({ tier: TIER, checks: [], errors: [], games: [], gamesDone: 0, interstitialsSeen: 0, phase: 'run', baseWins: null, baseTotal: null, prevClip: '', persistSnapshot: null, trace: [] }, saved || {});
+  QA.tier = TIER;
+  if (!Array.isArray(QA.checks)) QA.checks = [];
+  if (!Array.isArray(QA.errors)) QA.errors = [];
+  if (!Array.isArray(QA.games)) QA.games = [];
+  if (typeof QA.gamesDone !== 'number') QA.gamesDone = 0;
+  if (typeof QA.phase !== 'string') QA.phase = 'run';
+  if (typeof QA.baseWins !== 'number' && QA.baseWins !== null) QA.baseWins = null;
+  if (typeof QA.baseTotal !== 'number' && QA.baseTotal !== null) QA.baseTotal = null;
   function persistQA() { try { localStorage.setItem(KEY, JSON.stringify(QA)); } catch (e) {} }
   function check(name, ok, detail) {
     QA.checks.push({ name: name, ok: !!ok, detail: detail == null ? '' : String(detail) });
@@ -3761,7 +3769,7 @@
       }
       return finish();
     } catch (e) {
-      QA.errors.push('driver: ' + (e && e.stack || e));
+      try { (QA.errors = QA.errors || []).push('driver: ' + (e && e.stack || e)); } catch (e2) { QA.errors = ['driver: ' + (e && e.message || e)]; }
       persistQA();
       setStatus('QA ERROR: ' + (e && e.message || e));
       var preE = document.createElement('pre');

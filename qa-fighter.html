@@ -3281,7 +3281,11 @@
   var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
   var saved = null;
   try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { saved = null; }
-  var QA = saved || { checks: [], errors: [], wins: [], phase: 'start' };
+  var QA = Object.assign({ checks: [], errors: [], wins: [], phase: 'start', trace: [] }, saved || {});
+  if (!Array.isArray(QA.checks)) QA.checks = [];
+  if (!Array.isArray(QA.errors)) QA.errors = [];
+  if (!Array.isArray(QA.wins)) QA.wins = [];
+  if (typeof QA.phase !== 'string') QA.phase = 'start';
   function persist() { try { localStorage.setItem(KEY, JSON.stringify(QA)); } catch (e) {} }
   function check(name, ok, detail) {
     QA.checks.push({ name: name, ok: !!ok, detail: detail == null ? '' : String(detail) });
@@ -3522,7 +3526,7 @@
       location.reload();
       return 'reloading to verify Dragon does not stick';
     } catch (e) {
-      QA.errors.push('driver: ' + (e && e.stack || e));
+      try { (QA.errors = QA.errors || []).push('driver: ' + (e && e.stack || e)); } catch (e2) { QA.errors = ['driver: ' + (e && e.message || e)]; }
       persist();
       setStatus('Fighter QA ERROR: ' + (e && e.message || e));
       console.log('QA-FIGHTER-ERROR ' + (e && e.stack || e));

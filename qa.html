@@ -3232,7 +3232,7 @@
     </script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js');});}</script>
 <script>
-window.addEventListener("load", function(){ setTimeout(function(){
+(function(){ function start(){ setTimeout(function(){
 /* Gilded Sudoku QA driver — paste into the DevTools console on the live site (guest).
    Set window.QA_TIER before pasting ('easy', 'normal', or 'advanced').
    Plays 10 games on that tier, probes features, and writes a report to
@@ -3253,6 +3253,12 @@ window.addEventListener("load", function(){ setTimeout(function(){
   };
   if (QA.baseWins == null) QA.baseWins = (typeof life !== 'undefined') ? life.wins : 0;
   var BASE_WINS = QA.baseWins;
+  var badge = document.createElement('div');
+  badge.id = 'qa-status';
+  badge.style.cssText = 'position:fixed;top:8px;left:8px;z-index:99999;background:#111;color:#ffe27a;padding:8px 12px;font:14px sans-serif;border:2px solid #b08d2e;border-radius:8px;max-width:92vw;';
+  badge.textContent = 'QA running: ' + TIER + ' — starting…';
+  document.body.appendChild(badge);
+  function setStatus(t) { badge.textContent = t; }
   function persistQA() { try { localStorage.setItem(KEY, JSON.stringify({ tier: TIER, qa: QA })); } catch (e) {} }
   function check(name, ok, detail) {
     QA.checks.push({ name: name, ok: !!ok, detail: detail == null ? '' : String(detail) });
@@ -3312,6 +3318,7 @@ window.addEventListener("load", function(){ setTimeout(function(){
     await sleep(200);
   }
   async function solveClean() {
+    if (state.paused) { try { $('pauseBtn').click(); } catch (e) {} await sleep(300); }
     for (var r = 0; r < 9; r++) for (var c = 0; c < 9; c++) {
       if (state.given[r][c]) continue;
       if (state.values[r][c] !== 0) continue;
@@ -3347,6 +3354,7 @@ window.addEventListener("load", function(){ setTimeout(function(){
     QA.games.push(g);
     QA.gamesDone++;
     persistQA();
+    setStatus('QA running: ' + TIER + ' — game ' + QA.gamesDone + '/10 done');
   }
   async function closeWinVeil() {
     var btns = $('winVeil').querySelectorAll('button');
@@ -3541,6 +3549,7 @@ window.addEventListener("load", function(){ setTimeout(function(){
     pre.id = 'qa-report';
     pre.textContent = JSON.stringify(summary, null, 2);
     document.body.appendChild(pre);
+    setStatus('QA DONE: ' + TIER + ' — ' + passed + ' passed, ' + failed.length + ' failed, ' + QA.games.length + ' games');
     console.log('QA-DONE ' + JSON.stringify(summary));
     window.__qaRunning = false;
     return summary;
@@ -3572,6 +3581,11 @@ window.addEventListener("load", function(){ setTimeout(function(){
     } catch (e) {
       QA.errors.push('driver: ' + (e && e.stack || e));
       persistQA();
+      setStatus('QA ERROR: ' + (e && e.message || e));
+      var preE = document.createElement('pre');
+      preE.id = 'qa-error';
+      preE.textContent = 'QA-ERROR ' + (e && e.stack || e);
+      document.body.appendChild(preE);
       console.log('QA-ERROR ' + (e && e.stack || e));
       window.__qaRunning = false;
       throw e;
@@ -3580,7 +3594,9 @@ window.addEventListener("load", function(){ setTimeout(function(){
   return 'QA driver started for tier ' + TIER + ' — watch for QA-DONE';
 })();
 
-}, 1500); });
+}, 800); }
+if (document.readyState === "complete" || document.readyState === "interactive") start();
+else document.addEventListener("DOMContentLoaded", start); })();
 </script>
 </body>
 </html>

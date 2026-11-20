@@ -2270,6 +2270,9 @@
           state.mistakes = 0; state.hints = 0;
           state.seconds = 0; state.paused = false; state.won = false;
           state.history = [];
+          state.notesMode = false;
+          document.getElementById("notesBtn").setAttribute("aria-pressed", "false");
+          document.getElementById("notesBadge").hidden = true;
           state.score = 0; state.cellPoints = 0; state.hintCostTotal = 0;
           state.streak = 0; state.scored = {};
           document.getElementById("dailyLine").classList.toggle("show", state.isDaily);
@@ -3318,7 +3321,7 @@
     persistQA();
     setStatus('QA running: ' + TIER + ' — ' + step + ' (' + Math.round((Date.now() - T0) / 1000) + 's, ' + document.visibilityState + ')');
   }
-  setInterval(function () {
+  var heartbeat = setInterval(function () {
     setStatus('QA running: ' + TIER + ' — ' + curStep + ' (' + Math.round((Date.now() - T0) / 1000) + 's, ' + document.visibilityState + ')');
   }, 2000);
   window.addEventListener('error', function (e) { QA.errors.push(String(e.message)); persistQA(); });
@@ -3433,9 +3436,13 @@
   }
   async function solveClean(sol) {
     trace('filling cells');
+    try {
+      var nb = $('notesBtn');
+      if (nb && nb.getAttribute('aria-pressed') === 'true') { nb.click(); await sleep(200); }
+    } catch (e) {}
     var els = cells();
     for (var i = 0; i < 81; i++) {
-      if (els[i].textContent.trim() !== '') continue;
+      if (!els[i].querySelector('.notes') && els[i].textContent.trim() !== '') continue;
       var r = Math.floor(i / 9), c = i % 9;
       els[i].click();
       padBtn(sol[r][c]).click();
@@ -3711,6 +3718,7 @@
   }
   function finish() {
     try { clearTimeout(watchdog); } catch (e) {}
+    try { clearInterval(heartbeat); } catch (e) {}
     var passed = QA.checks.filter(function (c) { return c.ok; }).length;
     var failed = QA.checks.filter(function (c) { return !c.ok; });
     var rec = record();
@@ -3752,6 +3760,7 @@
   (async function main() {
     try {
       trace('main start, gamesDone=' + QA.gamesDone + ', phase=' + QA.phase);
+      if (QA.gamesDone === 0 && QA.phase === 'run' && !QA.persistSnapshot) { QA.checks = []; QA.errors = []; QA.trace = []; QA.games = []; QA.interstitialsSeen = 0; persistQA(); }
       if (QA.phase === 'persist-wait' && QA.persistSnapshot) {
         var snap = QA.persistSnapshot;
         var now = readBoardTexts();
@@ -3786,6 +3795,7 @@
     } catch (e) {
       try { (QA.errors = QA.errors || []).push('driver: ' + (e && e.stack || e)); } catch (e2) { QA.errors = ['driver: ' + (e && e.message || e)]; }
       persistQA();
+      try { clearInterval(heartbeat); } catch (e2) {}
       setStatus('QA ERROR: ' + (e && e.message || e));
       var preE = document.createElement('pre');
       preE.id = 'qa-error';

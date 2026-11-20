@@ -2270,6 +2270,9 @@
           state.mistakes = 0; state.hints = 0;
           state.seconds = 0; state.paused = false; state.won = false;
           state.history = [];
+          state.notesMode = false;
+          document.getElementById("notesBtn").setAttribute("aria-pressed", "false");
+          document.getElementById("notesBadge").hidden = true;
           state.score = 0; state.cellPoints = 0; state.hintCostTotal = 0;
           state.streak = 0; state.scored = {};
           document.getElementById("dailyLine").classList.toggle("show", state.isDaily);
@@ -3312,7 +3315,7 @@
     persist();
     setStatus('Fighter QA running — ' + step + ' (' + Math.round((Date.now() - T0) / 1000) + 's, ' + document.visibilityState + ')');
   }
-  setInterval(function () {
+  var heartbeat = setInterval(function () {
     setStatus('Fighter QA running — ' + curStep + ' (' + Math.round((Date.now() - T0) / 1000) + 's, ' + document.visibilityState + ')');
   }, 2000);
   window.addEventListener('error', function (e) { QA.errors.push(String(e.message)); persist(); });
@@ -3399,9 +3402,13 @@
   }
   async function solveClean(sol) {
     trace('filling cells');
+    try {
+      var nb = $('notesBtn');
+      if (nb && nb.getAttribute('aria-pressed') === 'true') { nb.click(); await sleep(200); }
+    } catch (e) {}
     var els = cells();
     for (var i = 0; i < 81; i++) {
-      if (els[i].textContent.trim() !== '') continue;
+      if (!els[i].querySelector('.notes') && els[i].textContent.trim() !== '') continue;
       var r = Math.floor(i / 9), c = i % 9;
       els[i].click();
       padBtn(sol[r][c]).click();
@@ -3445,6 +3452,7 @@
   }
   function finish() {
     try { clearTimeout(watchdog); } catch (e) {}
+    try { clearInterval(heartbeat); } catch (e) {}
     var passed = QA.checks.filter(function (c) { return c.ok; }).length;
     var failed = QA.checks.filter(function (c) { return !c.ok; });
     var summary = { checksPassed: passed, checksFailed: failed.length, failedChecks: failed, errors: QA.errors, wins: QA.wins };
@@ -3473,6 +3481,7 @@
   (async function main() {
     try {
       trace('main start, phase=' + QA.phase);
+      if (QA.phase !== 'after-dragon-reload') { QA.checks = []; QA.errors = []; QA.wins = []; QA.trace = []; QA.phase = 'start'; persist(); }
     await waitFor(function () { return document.querySelectorAll('.cell').length === 81; }, 10000, 'board ready');
       await sleep(800);
       if (QA.phase === 'after-dragon-reload') {
@@ -3528,6 +3537,7 @@
     } catch (e) {
       try { (QA.errors = QA.errors || []).push('driver: ' + (e && e.stack || e)); } catch (e2) { QA.errors = ['driver: ' + (e && e.message || e)]; }
       persist();
+      try { clearInterval(heartbeat); } catch (e2) {}
       setStatus('Fighter QA ERROR: ' + (e && e.message || e));
       console.log('QA-FIGHTER-ERROR ' + (e && e.stack || e));
       window.__qfRunning = false;

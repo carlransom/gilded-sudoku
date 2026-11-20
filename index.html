@@ -2270,6 +2270,9 @@
           state.mistakes = 0; state.hints = 0;
           state.seconds = 0; state.paused = false; state.won = false;
           state.history = [];
+          state.notesMode = false;
+          document.getElementById("notesBtn").setAttribute("aria-pressed", "false");
+          document.getElementById("notesBadge").hidden = true;
           state.score = 0; state.cellPoints = 0; state.hintCostTotal = 0;
           state.streak = 0; state.scored = {};
           document.getElementById("dailyLine").classList.toggle("show", state.isDaily);

@@ -4,14 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
-    <link rel="icon" href="data:," />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2318171a'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Georgia,serif' font-weight='bold' font-size='36' fill='%23b69546'%3EG%3C/text%3E%3C/svg%3E" />
     <title>Gilded Sudoku</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <style>
       button, [role="button"], select, summary, input:not([type="checkbox"], [type="radio"]) { min-height: 2rem; }
 
@@ -359,7 +356,7 @@
         padding: 8px 14px 12px;
       }
       .adslot .adtag {
-        font-size: 8.5px; letter-spacing: 0.28em; text-transform: uppercase; color: #9a8a58;
+        font-size: 8.5px; letter-spacing: 0.28em; text-transform: uppercase; color: #6b5e36;
         display: block; margin-bottom: 5px;
       }
       .ad-creative {
@@ -909,7 +906,7 @@
         font-size: 17px; color: #6d6247; cursor: pointer; min-height: 36px; min-width: 36px;
       }
       .interstitial .adtag {
-        font-size: 8.5px; letter-spacing: 0.28em; text-transform: uppercase; color: #9a8a58;
+        font-size: 8.5px; letter-spacing: 0.28em; text-transform: uppercase; color: #6b5e36;
         display: block; margin-bottom: 6px;
       }
       .toast {
@@ -986,6 +983,7 @@
             </div>
 
             <div class="board-frame" id="boardFrame">
+              <noscript><div style="padding:24px;text-align:center;color:#5c5850;font-size:13px;">Enable JavaScript to play Gilded Sudoku.</div></noscript>
               <div class="board" id="board" role="grid" aria-label="Sudoku board"></div>
               <div class="paused-veil" aria-hidden="true">Paused</div>
             </div>
@@ -2906,6 +2904,9 @@
       })();
     </script>
 
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script>
       /* ---------- Sign-in & cloud sync (Firebase) ----------
          Guests play fully on-device: progress lives in the same

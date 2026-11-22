@@ -231,6 +231,7 @@
       .cell.box-b { border-bottom: 2px solid #2a2517; }
       .cell.given { color: #14120c; font-weight: 700; cursor: default; }
       .cell.related { background: linear-gradient(145deg, #faf3da, #f1e7c8); }
+      .cell.diag { background: linear-gradient(145deg, #f9ecc0, #eed688); }
       .cell.same { background: linear-gradient(145deg, #f3e3ac, #ecd68f); }
       .cell.selected {
         background: linear-gradient(145deg, #ffeec0, #f7d774);
@@ -584,6 +585,7 @@
       .sheet .score-lines { margin: 2px 0 14px; text-align: left; }
       .sheet .score-lines .sl { display: flex; justify-content: space-between; gap: 14px; padding: 5px 2px; font-size: 13.5px; color: #57503e; border-top: 1px dashed #ddd2ae; }
       .sheet .score-lines .sl:first-child { border-top: 0; }
+      .sheet .score-lines .sl[hidden] { display: none; }
       .sheet .score-lines .sl b { color: #17150f; font-variant-numeric: tabular-nums; white-space: nowrap; }
       .sheet .score-lines .sl.neg b { color: var(--error); }
       .sheet .score-lines .sl.total { border-top: 1px solid var(--gold-deep); margin-top: 3px; padding-top: 8px; font-size: 14.5px; }
@@ -900,6 +902,7 @@
               <div class="score-float" id="scoreFloat" aria-hidden="true"></div>
             </div>
             <div class="mode-line" id="dailyLine">&#10022; Daily Puzzle &mdash; <span id="dailyLineDate"></span> &#10022;</div>
+            <div class="mode-line" id="masterLine">&#10022; Master&rsquo;s Puzzle &mdash; Sudoku X &middot; <span id="masterLineDate"></span> &#10022;</div>
 
             <div class="stats">
               <div class="stat"><span>Time</span><b id="clock">00:00</b></div>
@@ -957,6 +960,15 @@
                   <span>One puzzle, the same for every player today. Day streak: <b style="display:inline; font-size:12px;" id="dailyStreakVal">0 days</b> &middot; Streak freezes: <b style="display:inline; font-size:12px;" id="dailyFreezesVal">0</b></span>
                 </div>
                 <button type="button" id="dailyBtn">Play</button>
+              </div>
+
+              <div class="quest">
+                <div class="qicon" aria-hidden="true">M</div>
+                <div class="qbody">
+                  <b>Master&rsquo;s Puzzle &mdash; <span id="masterDateLabel">today</span></b>
+                  <span>Sudoku X &mdash; both diagonals must also hold 1&ndash;9, shown in gold on the board. Master streak: <b style="display:inline; font-size:12px;" id="masterStreakVal">0 days</b></span>
+                </div>
+                <button type="button" id="masterBtn">Play</button>
               </div>
 
               <div class="quest">
@@ -1042,6 +1054,7 @@
                 <div class="sl"><span>Cells &amp; streaks</span><b id="winCells">0</b></div>
                 <div class="sl"><span>Time bonus</span><b id="winTimeBonus">0</b></div>
                 <div class="sl"><span>No-mistake bonus</span><b id="winCleanBonus">0</b></div>
+                <div class="sl" id="winMasterRow" hidden><span>Master&rsquo;s completion bonus</span><b id="winMasterBonus">0</b></div>
                 <div class="sl neg"><span>Hints</span><b id="winHintCost">0</b></div>
                 <div class="sl total"><span>Puzzle score</span><b id="winScore">0</b></div>
                 <div class="sl"><span>Lifetime total &middot; <span id="winRank">Clay</span></span><b id="winLifetime">0</b></div>
@@ -1151,6 +1164,7 @@
 
         /* ---------- Sudoku engine ---------- */
         var activeRng = null;
+        var diagonalMode = false;
         function rand() { return activeRng ? activeRng() : Math.random(); }
         function mulberry32(seed) {
           var a = seed >>> 0;
@@ -1179,6 +1193,10 @@
         function isSafe(g, r, c, n) {
           for (var i = 0; i < 9; i++) {
             if (g[r][i] === n || g[i][c] === n) return false;
+          }
+          if (diagonalMode) {
+            if (r === c) for (var d = 0; d < 9; d++) { if (g[d][d] === n) return false; }
+            if (r + c === 8) for (var e = 0; e < 9; e++) { if (g[e][8 - e] === n) return false; }
           }
           var br = r - (r % 3), bc = c - (c % 3);
           for (var x = 0; x < 3; x++) for (var y = 0; y < 3; y++) {
@@ -1283,13 +1301,15 @@
           }
           return { puzzle: puzzle, solution: solution, givens: givens };
         }
-        function generate(givensTarget, seed) {
+        function generate(givensTarget, seed, diagonal) {
           /* Seeded puzzles (the daily) must stay exactly as before: a
              single attempt from the given seed, no retries. */
           if (seed != null) {
             activeRng = mulberry32(seed);
+            diagonalMode = !!diagonal;
             var seeded = generateOnce(givensTarget);
             activeRng = null;
+            diagonalMode = false;
             return { puzzle: seeded.puzzle, solution: seeded.solution };
           }
           /* Unseeded: if an attempt stalls above the target (no further
@@ -1299,6 +1319,7 @@
              already hit their targets on the first attempt, so the
              retry simply never triggers for them. Every attempt keeps
              the unique-solution guarantee inside generateOnce. */
+          diagonalMode = !!diagonal;
           var best = null;
           var bestGivens = Infinity;
           for (var attempt = 0; attempt < 6; attempt++) {
@@ -1316,6 +1337,7 @@
             }
             if (bestGivens <= givensTarget) break;
           }
+          diagonalMode = false;
           return { puzzle: best.puzzle, solution: best.solution };
         }
 
@@ -1337,9 +1359,11 @@
           { id: "tiers",  mark: "3", name: "Every Tier",   hint: "Win on Easy, Normal & Advanced" },
           { id: "clean",  mark: "0", name: "Flawless",     hint: "Win with zero mistakes" },
           { id: "pure",   mark: "&#10022;", name: "Unaided", hint: "Win with zero hints" },
-          { id: "weekly", mark: "5", name: "Weekly Goal",  hint: "5 Advanced wins in a week" }
+          { id: "weekly", mark: "5", name: "Weekly Goal",  hint: "5 Advanced wins in a week" },
+          { id: "master", mark: "M", name: "Master's Badge", hint: "Complete a Master's Puzzle" }
         ];
         var WEEKLY_TARGET = 5;
+        var MASTER_BONUS = 500;
 
         function todayKey(offsetDays) {
           var d = new Date();
@@ -1376,6 +1400,10 @@
           dailyDoneKey: null,
           dailyStreak: 0,
           dailyLastKey: null,
+          masterDoneKey: null,
+          masterStreak: 0,
+          masterLastKey: null,
+          masterWins: 0,
           weekKey: weekKey(),
           weeklyAdvanced: 0,
           freezes: 0,
@@ -1401,6 +1429,10 @@
             dailyDoneKey: null,
             dailyStreak: 0,
             dailyLastKey: null,
+            masterDoneKey: null,
+            masterStreak: 0,
+            masterLastKey: null,
+            masterWins: 0,
             weekKey: weekKey(),
             weeklyAdvanced: 0,
             freezes: 0,
@@ -1425,6 +1457,7 @@
               data.game = {
                 diff: state.diff,
                 isDaily: state.isDaily,
+                isMaster: state.isMaster,
                 dayKey: todayKey(0),
                 puzzle: state.puzzle,
                 solution: state.solution,
@@ -1482,6 +1515,10 @@
           if (typeof saved.dailyDoneKey === "string") d.dailyDoneKey = saved.dailyDoneKey;
           if (typeof saved.dailyStreak === "number") d.dailyStreak = saved.dailyStreak;
           if (typeof saved.dailyLastKey === "string") d.dailyLastKey = saved.dailyLastKey;
+          if (typeof saved.masterDoneKey === "string") d.masterDoneKey = saved.masterDoneKey;
+          if (typeof saved.masterStreak === "number") d.masterStreak = saved.masterStreak;
+          if (typeof saved.masterLastKey === "string") d.masterLastKey = saved.masterLastKey;
+          if (typeof saved.masterWins === "number") d.masterWins = saved.masterWins;
           if (typeof saved.weekKey === "string") d.weekKey = saved.weekKey;
           if (typeof saved.weeklyAdvanced === "number") d.weeklyAdvanced = saved.weeklyAdvanced;
           if (typeof saved.freezes === "number") d.freezes = saved.freezes;
@@ -1516,7 +1553,7 @@
           seconds: 0, timerId: null, paused: false, won: false,
           history: [],
           score: 0, cellPoints: 0, hintCostTotal: 0,
-          streak: 0, scored: {}, isDaily: false, freeHints: 0
+          streak: 0, scored: {}, isDaily: false, isMaster: false, freeHints: 0
         };
 
         var boardEl = document.getElementById("board");
@@ -1670,6 +1707,15 @@
           dailyBtn.classList.toggle("done", dailyDone);
           dailyBtn.disabled = dailyDone;
 
+          applyMasterRollover();
+          document.getElementById("masterStreakVal").textContent =
+            life.masterStreak + (life.masterStreak === 1 ? " day" : " days");
+          var masterBtn = document.getElementById("masterBtn");
+          var masterDone = life.masterDoneKey === todayKey(0);
+          masterBtn.textContent = masterDone ? "Done ✓" : "Play";
+          masterBtn.classList.toggle("done", masterDone);
+          masterBtn.disabled = masterDone;
+
           document.getElementById("weeklyVal").textContent = life.weeklyAdvanced + " of " + WEEKLY_TARGET;
           document.getElementById("weeklyFill").style.width =
             Math.min(100, (life.weeklyAdvanced / WEEKLY_TARGET) * 100) + "%";
@@ -1746,7 +1792,10 @@
           }
           state.diff = diff;
           state.isDaily = !!opts.daily;
-          var gen = opts.daily
+          state.isMaster = !!opts.master;
+          var gen = opts.master
+            ? generate(DIFFS.normal, dateSeed("porcelain-master-" + todayKey(0)), true)
+            : opts.daily
             ? generate(DIFFS.normal, dateSeed("porcelain-daily-" + todayKey(0)))
             : generate(DIFFS[diff]);
           state.puzzle = gen.puzzle;
@@ -1765,6 +1814,7 @@
           state.score = 0; state.cellPoints = 0; state.hintCostTotal = 0;
           state.streak = 0; state.scored = {};
           document.getElementById("dailyLine").classList.toggle("show", state.isDaily);
+          document.getElementById("masterLine").classList.toggle("show", state.isMaster);
           renderProgress();
           document.querySelectorAll(".tiers button").forEach(function (b) {
             b.setAttribute("aria-pressed", b.getAttribute("data-diff") === diff ? "true" : "false");
@@ -1856,6 +1906,10 @@
           for (var x = 0; x < 3; x++) for (var y = 0; y < 3; y++) {
             delete state.notes[(br + x) * 9 + (bc + y)][num];
           }
+          if (state.isMaster) {
+            if (r === c) for (var d = 0; d < 9; d++) delete state.notes[d * 9 + d][num];
+            if (r + c === 8) for (var e = 0; e < 9; e++) delete state.notes[e * 9 + (8 - e)][num];
+          }
         }
 
         function erase() {
@@ -1946,6 +2000,14 @@
           }
         }
 
+        function applyMasterRollover() {
+          if (!life.masterLastKey || life.masterStreak <= 0) return;
+          var missed = Math.round((keyToDate(todayKey(0)) - keyToDate(life.masterLastKey)) / 86400000) - 1;
+          if (missed <= 0) return;
+          life.masterStreak = 0;
+          life.masterLastKey = null;
+        }
+
         function checkWin() {
           for (var r = 0; r < 9; r++) for (var c = 0; c < 9; c++) {
             if (state.values[r][c] !== state.solution[r][c]) return;
@@ -1958,7 +2020,8 @@
           var rules = SCORING[state.diff];
           var timeBonus = Math.max(0, rules.par - state.seconds) * rules.perSec;
           var cleanBonus = state.mistakes === 0 ? rules.cleanBonus : 0;
-          var finalScore = state.score + timeBonus + cleanBonus;
+          var masterBonus = state.isMaster ? MASTER_BONUS : 0;
+          var finalScore = state.score + timeBonus + cleanBonus + masterBonus;
           state.score = finalScore;
 
           /* --- Lifetime, best times, challenges --- */
@@ -1974,11 +2037,18 @@
           life.weekPoints += finalScore;
           if (state.diff === "advanced") life.weeklyAdvanced = Math.min(WEEKLY_TARGET, life.weeklyAdvanced + 1);
           if (state.isDaily) applyDailyRollover();
+          if (state.isMaster) applyMasterRollover();
           if (state.isDaily && life.dailyDoneKey !== todayKey(0)) {
             life.dailyStreak = life.dailyLastKey === todayKey(-1) ? life.dailyStreak + 1 : 1;
             if (life.dailyStreak % 7 === 0) life.freezes++;
             life.dailyLastKey = todayKey(0);
             life.dailyDoneKey = todayKey(0);
+          }
+          if (state.isMaster && life.masterDoneKey !== todayKey(0)) {
+            life.masterStreak = life.masterLastKey === todayKey(-1) ? life.masterStreak + 1 : 1;
+            life.masterLastKey = todayKey(0);
+            life.masterDoneKey = todayKey(0);
+            life.masterWins++;
           }
 
           /* --- Badges --- */
@@ -1997,6 +2067,7 @@
           if (state.mistakes === 0) award("clean");
           if (state.hints === 0) award("pure");
           if (life.weeklyAdvanced >= WEEKLY_TARGET) award("weekly");
+          if (state.isMaster) award("master");
 
           renderProgress();
           persist();
@@ -2004,12 +2075,14 @@
           /* --- Win sheet --- */
           document.getElementById("winTime").textContent = fmt(state.seconds);
           document.getElementById("winDiff").textContent =
-            (state.isDaily ? "Daily · " : "") +
+            (state.isMaster ? "Master's · " : state.isDaily ? "Daily · " : "") +
             (state.diff === "easy" ? "Easy" : state.diff === "normal" ? "Normal" : "Advanced");
           document.getElementById("winMistakes").textContent = state.mistakes;
           document.getElementById("winCells").textContent = "+" + fmtPts(state.cellPoints);
           document.getElementById("winTimeBonus").textContent = "+" + fmtPts(timeBonus);
           document.getElementById("winCleanBonus").textContent = cleanBonus ? "+" + fmtPts(cleanBonus) : "0";
+          document.getElementById("winMasterRow").hidden = !state.isMaster;
+          document.getElementById("winMasterBonus").textContent = masterBonus ? "+" + fmtPts(masterBonus) : "0";
           document.getElementById("winHintCost").textContent =
             state.hintCostTotal ? "−" + fmtPts(state.hintCostTotal) : "0";
           document.getElementById("winScore").textContent = fmtPts(finalScore);
@@ -2018,14 +2091,15 @@
           document.getElementById("winRank").textContent = newRank;
           var notes = [];
           if (newBadges.length) notes.push("New badge" + (newBadges.length > 1 ? "s" : "") + ": " + newBadges.join(" · "));
-          if (isRecord) notes.push("New best time on " + document.getElementById("winDiff").textContent.replace("Daily · ", "") + " — " + fmt(state.seconds));
+          if (isRecord) notes.push("New best time on " + document.getElementById("winDiff").textContent.replace("Daily · ", "").replace("Master's · ", "") + " — " + fmt(state.seconds));
           if (newRank !== prevRank) notes.push("Rank up: you are now " + newRank);
           if (state.isDaily) notes.push("Daily complete — streak: " + life.dailyStreak + (life.dailyStreak === 1 ? " day" : " days"));
+          if (state.isMaster) notes.push("Master's complete — streak: " + life.masterStreak + (life.masterStreak === 1 ? " day" : " days"));
           var nb = document.getElementById("winBadges");
           nb.textContent = notes.join("  ");
           nb.classList.toggle("show", notes.length > 0);
           if (!adFree && life.wins % 3 === 0) interstitialPending = true;
-          document.getElementById("winShareBtn").hidden = !state.isDaily;
+          document.getElementById("winShareBtn").hidden = !(state.isDaily || state.isMaster);
           document.getElementById("winGildedBtn").hidden = life.wins !== 3;
           setTimeout(function () {
             document.getElementById("winVeil").classList.add("open");
@@ -2034,6 +2108,16 @@
 
         function renderTools() {
           document.getElementById("undoBtn").disabled = state.history.length === 0;
+        }
+
+        function diagDuplicate(r, c, v) {
+          if (r === c) for (var d = 0; d < 9; d++) {
+            if (d !== r && state.values[d][d] === v) return true;
+          }
+          if (r + c === 8) for (var e = 0; e < 9; e++) {
+            if (e !== r && state.values[e][8 - e] === v) return true;
+          }
+          return false;
         }
 
         function render() {
@@ -2046,11 +2130,14 @@
             var v = state.values[r][c];
             var cls = "cell" + (c === 2 || c === 5 ? " box-r" : "") + (r === 2 || r === 5 ? " box-b" : "");
             if (state.given[r][c]) cls += " given";
+            if (state.isMaster && (r === c || r + c === 8)) cls += " diag";
             if (i === state.selected) cls += " selected";
             else if (state.selected >= 0 && (r === selR || c === selC ||
-              (Math.floor(r / 3) === Math.floor(selR / 3) && Math.floor(c / 3) === Math.floor(selC / 3)))) cls += " related";
+              (Math.floor(r / 3) === Math.floor(selR / 3) && Math.floor(c / 3) === Math.floor(selC / 3)) ||
+              (state.isMaster && ((selR === selC && r === c) || (selR + selC === 8 && r + c === 8))))) cls += " related";
             if (v !== 0 && v === selVal && state.selected >= 0) cls += " same";
             if (v !== 0 && !state.given[r][c] && v !== state.solution[r][c]) cls += " error";
+            if (state.isMaster && v !== 0 && diagDuplicate(r, c, v)) cls += " error";
             el.className = cls;
             if (v !== 0) {
               el.textContent = v;
@@ -2092,8 +2179,14 @@
           if (life.dailyDoneKey === todayKey(0)) return;
           newGame("normal", { daily: true });
         });
+        document.getElementById("masterBtn").addEventListener("click", function () {
+          if (life.masterDoneKey === todayKey(0)) return;
+          newGame("normal", { master: true });
+        });
         document.getElementById("dailyDateLabel").textContent = todayLabel();
         document.getElementById("dailyLineDate").textContent = todayLabel();
+        document.getElementById("masterDateLabel").textContent = todayLabel();
+        document.getElementById("masterLineDate").textContent = todayLabel();
         document.getElementById("eraseBtn").addEventListener("click", erase);
         document.getElementById("undoBtn").addEventListener("click", undo);
         document.getElementById("hintBtn").addEventListener("click", hint);
@@ -2180,6 +2273,7 @@
             var best = life.best[t] == null ? "—" : fmt(life.best[t]);
             html += '<div class="sl"><span>' + names[t] + " — " + w + " wins · avg " + avg + '</span><b>Best ' + best + "</b></div>";
           });
+          html += '<div class="sl"><span>Master\'s Puzzles — ' + life.masterWins + ' solved</span><b>Streak ' + life.masterStreak + (life.masterStreak === 1 ? " day" : " days") + "</b></div>";
           var acc = life.wins > 0 ? (life.totalMistakes / life.wins).toFixed(1) : "0.0";
           html += '<div class="sl"><span>Accuracy — mistakes per game</span><b>' + acc + "</b></div>";
           var rk = rankFor(life.total);
@@ -2320,6 +2414,7 @@
         function restoreGame(g) {
           state.diff = (g.diff === "normal" || g.diff === "advanced") ? g.diff : "easy";
           state.isDaily = !!g.isDaily;
+          state.isMaster = !!g.isMaster;
           state.puzzle = g.puzzle;
           state.solution = g.solution;
           state.values = g.values;
@@ -2341,6 +2436,7 @@
           state.scored = (g.scored && typeof g.scored === "object") ? g.scored : {};
           state.freeHints = g.freeHints || 0;
           document.getElementById("dailyLine").classList.toggle("show", state.isDaily);
+          document.getElementById("masterLine").classList.toggle("show", state.isMaster);
           document.querySelectorAll(".tiers button").forEach(function (b) {
             b.setAttribute("aria-pressed", b.getAttribute("data-diff") === state.diff ? "true" : "false");
           });
@@ -2383,7 +2479,7 @@
             /* Resume the puzzle in progress — unless it was already won,
                or it is a daily puzzle left over from a previous day. */
             if (g && !g.won && isGrid(g.puzzle) && isGrid(g.solution) && isGrid(g.values) && isGrid(g.given)
-                && !(g.isDaily && g.dayKey !== todayKey(0))) {
+                && !((g.isDaily || g.isMaster) && g.dayKey !== todayKey(0))) {
               restoreGame(g);
               restored = true;
             }
@@ -2481,6 +2577,7 @@
             best: { easy: null, normal: null, advanced: null },
             badges: {},
             dailyDoneKey: null, dailyStreak: 0, dailyLastKey: null,
+            masterDoneKey: null, masterStreak: 0, masterLastKey: null, masterWins: 0,
             weekKey: weekKey(), weeklyAdvanced: 0,
             freezes: 0, weekPoints: 0, totalMistakes: 0,
             timeByTier: { easy: 0, normal: 0, advanced: 0 }
@@ -2505,6 +2602,10 @@
           if (typeof saved.dailyDoneKey === "string") d.dailyDoneKey = saved.dailyDoneKey;
           if (typeof saved.dailyStreak === "number") d.dailyStreak = saved.dailyStreak;
           if (typeof saved.dailyLastKey === "string") d.dailyLastKey = saved.dailyLastKey;
+          if (typeof saved.masterDoneKey === "string") d.masterDoneKey = saved.masterDoneKey;
+          if (typeof saved.masterStreak === "number") d.masterStreak = saved.masterStreak;
+          if (typeof saved.masterLastKey === "string") d.masterLastKey = saved.masterLastKey;
+          if (typeof saved.masterWins === "number") d.masterWins = saved.masterWins;
           if (typeof saved.weekKey === "string") d.weekKey = saved.weekKey;
           if (typeof saved.weeklyAdvanced === "number") d.weeklyAdvanced = saved.weeklyAdvanced;
           if (typeof saved.freezes === "number") d.freezes = saved.freezes;
@@ -2537,6 +2638,11 @@
           m.dailyDoneKey = src.dailyDoneKey;
           m.dailyStreak = src.dailyStreak;
           m.dailyLastKey = src.dailyLastKey;
+          var msrc = ((b.masterLastKey || "") >= (a.masterLastKey || "")) ? b : a;
+          m.masterDoneKey = msrc.masterDoneKey;
+          m.masterStreak = msrc.masterStreak;
+          m.masterLastKey = msrc.masterLastKey;
+          m.masterWins = Math.max(a.masterWins || 0, b.masterWins || 0);
           /* Weekly goal: same week — keep the larger count; different
              weeks — keep whichever belongs to the current week. */
           if (a.weekKey === b.weekKey) {
